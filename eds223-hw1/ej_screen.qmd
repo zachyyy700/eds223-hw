@@ -1,5 +1,8 @@
 ---
-title: "ej_screen"
+title: "Homework 1: Environmental Injustice"
+execute: 
+  warning: false
+  message: false
 format: html
 ---
 
@@ -13,9 +16,9 @@ pacman::p_load('tidyverse', 'sf', 'here', 'tmap', 'tmaptools')
 ejscreen <- sf::st_read(here::here("data", "ejscreen","EJSCREEN_2023_BG_StatePct_with_AS_CNMI_GU_VI.gdb"))
 ```
 
-# Georgia
+# Georgia, USA
 ```{r}
-# filter to georagia state
+# filter to georgia state
 georgia <- ejscreen |> 
   filter(ST_ABBREV == "GA") 
 
@@ -34,36 +37,30 @@ bbox_georgia <- st_bbox(c(xmin = -85.9, xmax = -80.5, ymax = 35.1, ymin = 30.4),
 
 ```{r}
 # Create first map
-g_peopcolor <- tm_shape(georgia_counties_means, bbox = bbox_georgia) +
+tm_shape(georgia_counties_means, bbox = bbox_georgia) +
   tm_crs(4326) + # Specify crs
   tm_polygons(fill = "PEOPCOLORPCT",
               fill.scale = tm_scale(values = 'brewer.yl_or_rd'),
               fill.legend = tm_legend(title = "Percent People of Color", reverse = TRUE)) +
-  tm_title(text = "Georgia Counties: Percent People of Color", fontface = 'bold', size = 4, padding = 0.1) +
-  tm_layout(legend.position = c(0.65, 0.95)) # Adjust legend position
-```
-
-```{r}
-# Save first map
-tmap_save(tm = g_peopcolor, filename = "georgia_color.jpg")
+  tm_title(text = "Georgia Counties: Percent People of Color", fontface = 'bold', size = 4) +
+  tm_compass(position = c(0.76, 0.95), type = '4star') + # Add compass
+  tm_scalebar(position = c(0.05, 0.65), text.size = 0.7) + # Add scale bar
+  tm_layout(legend.position = c(0, 1), # Adjust legend position
+            inner.margins = c(0.05, 0.5, 0.05, 0.05)) 
 ```
 
 ```{r}
 # Create second map
-g_air_cancer <- tm_shape(georgia_counties_means, bbox = bbox_georgia) +
+tm_shape(georgia_counties_means, bbox = bbox_georgia) +
   tm_crs(4326) +
   tm_polygons(fill = "D2_RESP",
               fill.scale = tm_scale(values = 'brewer.yl_or_rd'),
               fill.legend = tm_legend(title = "Air Toxics Hazard Index", reverse = TRUE)) +
-  tm_title(text = "Georgia Counties: Respiratory Hazard Index (EJ Index)",
-           fontface = 'bold',
-           size = 4,
-           padding = 0.1) +
-    tm_layout(legend.position = c(0.65, 0.95))
+  tm_title(text = "Georgia Counties: Respiratory Hazard Index (EJ Index)", fontface = 'bold', size = 4) +
+  tm_compass(position = c(0.76, 0.95), type = '4star') +
+  tm_scalebar(position = c(0.05, 0.5), text.size = 0.7) +
+  tm_layout(legend.position = c(0, 1),
+            inner.margins = c(0.05, 0.5, 0.05, 0.05))
 ```
 
-```{r}
-# Save second map
-tmap_save(tm = g_air_cancer, filename = "georgia_air.jpg")
-```
 
