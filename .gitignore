@@ -1,4 +1,8 @@
-.log
+# Data
+eds223-hw*/data/
 
-eds223-hw1/data/
-.Rproj.user
+# R proj user
+eds223-hw*/.Rproj.user/
+
+# R history
+eds223-hw*/.Rhistory
