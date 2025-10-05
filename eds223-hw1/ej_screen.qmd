@@ -17,6 +17,7 @@ ejscreen <- sf::st_read(here::here("data", "ejscreen","EJSCREEN_2023_BG_StatePct
 ```
 
 # Georgia, USA
+
 ```{r}
 # filter to georgia state
 georgia <- ejscreen |> 
@@ -53,14 +54,14 @@ tm_shape(georgia_counties_means, bbox = bbox_georgia) +
 # Create second map
 tm_shape(georgia_counties_means, bbox = bbox_georgia) +
   tm_crs(4326) +
-  tm_polygons(fill = "D2_RESP",
+  tm_polygons(fill = "RESP",
               fill.scale = tm_scale(values = 'brewer.yl_or_rd'),
-              fill.legend = tm_legend(title = "Air Toxics Hazard Index", reverse = TRUE)) +
-  tm_title(text = "Georgia Counties: Respiratory Hazard Index (EJ Index)", fontface = 'bold', size = 4) +
+              fill.legend = tm_legend(title = "Respiratory Hazard Index", reverse = TRUE)) +
+  tm_title(text = "Georgia Counties: Respiratory Hazard Index", fontface = 'bold', size = 4) +
   tm_compass(position = c(0.76, 0.95), type = '4star') +
   tm_scalebar(position = c(0.05, 0.5), text.size = 0.7) +
   tm_layout(legend.position = c(0, 1),
             inner.margins = c(0.05, 0.5, 0.05, 0.05))
 ```
 
-
+The state of Georgia has some of the nation's worst air quality according to the [American Lung Association](https://www.lung.org/research/sota/city-rankings/states/georgia). Additionally, [Black Demographics](https://blackdemographics.com/population/black-state-population/) has ranked Georgia as second highest percent black population in the US. The first map shows this distribution of percent people of color by county, concentrated around central Georgia and south-western parts as well. The second map shows the distribution of the EPA's AirToxScreen respiratory hazard index, derived from measuring toxic pollutants in ambient outdoor air. The hazard index is a unit-less measurement of the risk for developing non-cancer respiratory illnesses like asthma and bronchitis. The most hazardous counties lie in close proximity to counties with higher percentage of black populations which shows one example of environmental injustice that black communities face in the US. 
