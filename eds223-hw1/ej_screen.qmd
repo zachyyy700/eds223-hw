@@ -32,13 +32,8 @@ georgia_counties_means <- aggregate(georgia, by = list(georgia$CNTY_NAME), FUN =
 ```
 
 ```{r}
-# Define extent with st_bbox()
-bbox_georgia <- st_bbox(c(xmin = -85.9, xmax = -80.5, ymax = 35.1, ymin = 30.4), crs = 4326)
-```
-
-```{r}
 # Create first map
-tm_shape(georgia_counties_means, bbox = bbox_georgia) +
+tm_shape(georgia_counties_means) +
   tm_crs(4326) + # Specify crs
   tm_polygons(fill = "PEOPCOLORPCT",
               fill.scale = tm_scale(values = 'brewer.yl_or_rd'),
@@ -52,7 +47,7 @@ tm_shape(georgia_counties_means, bbox = bbox_georgia) +
 
 ```{r}
 # Create second map
-tm_shape(georgia_counties_means, bbox = bbox_georgia) +
+tm_shape(georgia_counties_means) +
   tm_crs(4326) +
   tm_polygons(fill = "RESP",
               fill.scale = tm_scale(values = 'brewer.yl_or_rd'),
