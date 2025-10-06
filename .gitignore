@@ -7,3 +7,7 @@ eds223-hw*/.Rproj.user/
 # R history
 eds223-hw*/.Rhistory
 .Rproj.user
+
+# Quarto build artifacts
+eds223-hw*/*.html
+eds223-hw*/*_files/
