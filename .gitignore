@@ -11,3 +11,7 @@ eds223-hw*/.Rhistory
 # Quarto build artifacts
 eds223-hw*/*.html
 eds223-hw*/*_files/
+
+# DS Store
+.DS_Store
+eds223-hw*/.DS_Store
