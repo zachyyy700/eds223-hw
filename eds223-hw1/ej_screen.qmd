@@ -16,7 +16,7 @@ pacman::p_load('tidyverse', 'sf', 'here', 'tmap', 'tmaptools')
 ejscreen <- sf::st_read(here::here("data", "ejscreen","EJSCREEN_2023_BG_StatePct_with_AS_CNMI_GU_VI.gdb"))
 ```
 
-# Georgia, USA
+# Clayton County, Georgia, USA
 
 ```{r}
 # filter to Georgia state
