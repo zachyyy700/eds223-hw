@@ -7,7 +7,7 @@
 -   Create two related maps that communicate an environmental justice issue
 -   Write a brief paragraph explaning what the maps communicate
 -   The final product should be a professional, rendered Quarto document (.qmd) containing all code and outputs
-    - The final product pdf can also be found [here](https://github.com/zachyyy700/eds223-hw/blob/main/eds223-hw1/ej_screen.pdf)
+    -   The final product pdf can also be found [here](https://github.com/zachyyy700/eds223-hw/blob/main/eds223-hw1/ej_screen.pdf)
 
 ### Data
 
@@ -15,7 +15,7 @@ The data used in this homework is from the United States Environmental Protectio
 
 ### References
 
--   United States Environmental Protection Agency, 2025. *EJSCREEN*. Retrieved: October 6, 2025, from \[<https://19january2021snapshot.epa.gov/ejscreen.html>\]
+-   United States Environmental Protection Agency, 2025. *EJSCREEN*. Retrieved: October 6, 2025, from <https://19january2021snapshot.epa.gov/ejscreen.html>
 
 -   American Lung Association, 2025. *Report Card: Georgia*. [<https://www.lung.org/research/sota/city-rankings/states/georgia>]
 
