@@ -65,7 +65,7 @@ tm_shape(clayton) +
             inner.margins = c(0.05, 0.75, 0.05, 0.05))
 ```
 
-### Paragraph Summary
+### Summary
 
 The state of Georgia has some of the nation's worst air quality according to the [American Lung Association](https://www.lung.org/research/sota/city-rankings/states/georgia). Additionally, the [U.S. Census Bureau](https://www.census.gov/topics/population/data.html) has ranked Georgia as second highest percent black population in the US. The first map shows this distribution of percent people of color in Clayton County, Georgia concentrated in northern parts of the county. The second map shows the distribution of the EPA's AirToxScreen respiratory hazard index, derived from measuring toxic pollutants in ambient outdoor air. The hazard index is a unit-less measurement of the risk for developing non-cancer respiratory illnesses like asthma and bronchitis. The most hazardous districts lie in close proximity to districts with higher percentage of black populations which shows one example of environmental injustice that black communities face in the US.
 
