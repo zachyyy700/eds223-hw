@@ -7,6 +7,7 @@
 -   Create two related maps that communicate an environmental justice issue
 -   Write a brief paragraph explaning what the maps communicate
 -   The final product should be a professional, rendered Quarto document (.qmd) containing all code and outputs
+    - The final product pdf can also be found [here](https://github.com/zachyyy700/eds223-hw/blob/main/eds223-hw1/ej_screen.pdf)
 
 ### Data
 
