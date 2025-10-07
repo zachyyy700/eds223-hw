@@ -15,7 +15,7 @@ The data used in this homework is from the United States Environmental Protectio
 
 ### References
 
--   U.S. Environmental Protection Agency (EPA), 2023. EJScreen Technical Documentation.
+-   United States Environmental Protection Agency, 2025. *EJSCREEN*. Retrieved: October 6, 2025, from \[<https://19january2021snapshot.epa.gov/ejscreen.html>\]
 
 -   American Lung Association, 2025. *Report Card: Georgia*. [<https://www.lung.org/research/sota/city-rankings/states/georgia>]
 
