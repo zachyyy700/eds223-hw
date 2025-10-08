@@ -4,3 +4,14 @@ format: html
 editor: visual
 ---
 
+```{r}
+library(tidyverse)
+library(sf)
+```
+
+```{r}
+ejscreen
+```
+```{r}
+
+```
