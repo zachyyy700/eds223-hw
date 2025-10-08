@@ -10,8 +10,13 @@ library(sf)
 ```
 
 ```{r}
-ejscreen
+ejscreen <- st_read(here::here('data', 'ejscreen', 'EJSCREEN_2023_BG_StatePct_with_AS_CNMI_GU_VI.gdb'))
+
+holc <- st_read(here::here('data','mapping-inequality' ,'mapping-inequality-los-angeles.json'))
+
+birds <- st_read(here::here('data', 'gbif-birds-LA', 'gbif-birds-LA.shp'))
 ```
+
 ```{r}
 
 ```
