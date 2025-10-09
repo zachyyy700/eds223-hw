@@ -1,22 +1,71 @@
 ---
 title: "Homework 2: Redlining & Environmental Injustice"
 format: html
-editor: visual
+editor: source
+execute: 
+  warning: false
 ---
 
 ```{r}
 library(tidyverse)
 library(sf)
+library(tmap)
+library(kableExtra)
+theme_set(theme_light())
 ```
 
 ```{r}
 ejscreen <- st_read(here::here('data', 'ejscreen', 'EJSCREEN_2023_BG_StatePct_with_AS_CNMI_GU_VI.gdb'))
 
-holc <- st_read(here::here('data','mapping-inequality' ,'mapping-inequality-los-angeles.json'))
+holc <- st_read(here::here('data','mapping-inequality' ,'mapping-inequality-los-angeles.json')) |> 
+  st_make_valid()
 
 birds <- st_read(here::here('data', 'gbif-birds-LA', 'gbif-birds-LA.shp'))
 ```
 
 ```{r}
+la_county <- ejscreen |> 
+  filter(CNTY_NAME %in% c("Los Angeles County")) |> 
+  filter(AREALAND != 0) |> 
+  st_transform(crs = 4326)
+```
+
+# Part 1: Redlining & Environmental Justice
+
+## 1.1 Map of HOLC redline grades
+```{r}
+colors <- c("#caffbf", "#a0c4ff", "#fdffb6", "#ffadad")
+```
+
+```{r}
+tm_shape(la_county, bbox = st_bbox(holc)) +
+  tm_fill() +
+tm_shape(holc) +
+  tm_fill(fill = 'grade',
+              fill.scale = tm_scale(values = colors)) 
 
 ```
+
+## 1.2 Table of Percentage of Census block group in each HOLC grade
+```{r}
+combined_la_holc <- st_join(x = holc, y = la_county) |> 
+  st_drop_geometry() 
+
+grade_percent <- combined_la |> 
+  group_by(grade) |> 
+  summarise(count = n()) |> 
+  mutate(grade_perc = (count / sum(count)) * 100)
+
+kable(grade_percent)
+
+```
+
+## 1.3 HOLC grades visuals
+```{r}
+ej_conditions_holc <- combined_la |> 
+  group_by(grade) |> 
+  summarise(lowincpct_mean = mean(LOWINCPCT) * 100,
+            p_pm25_mean = mean(P_PM25),
+            p_lifeexppct_mean = mean(P_LIFEEXPPCT, na.rm = TRUE))
+```
+
