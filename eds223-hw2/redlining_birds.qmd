@@ -11,6 +11,7 @@ library(tidyverse)
 library(sf)
 library(tmap)
 library(kableExtra)
+library(patchwork)
 theme_set(theme_light())
 ```
 
@@ -18,54 +19,131 @@ theme_set(theme_light())
 ejscreen <- st_read(here::here('data', 'ejscreen', 'EJSCREEN_2023_BG_StatePct_with_AS_CNMI_GU_VI.gdb'))
 
 holc <- st_read(here::here('data','mapping-inequality' ,'mapping-inequality-los-angeles.json')) |> 
-  st_make_valid()
+  st_make_valid() # Make invalid geometries valid
 
 birds <- st_read(here::here('data', 'gbif-birds-LA', 'gbif-birds-LA.shp'))
 ```
 
 ```{r}
+# Filter ejscreen data to LA county
 la_county <- ejscreen |> 
   filter(CNTY_NAME %in% c("Los Angeles County")) |> 
-  filter(AREALAND != 0) |> 
-  st_transform(crs = 4326)
+  filter(AREALAND != 0) |> # Exclude water bodies 
+  st_transform(crs = 4326) # Transform to EPSG:4326 crs
 ```
 
 # Part 1: Redlining & Environmental Justice
 
 ## 1.1 Map of HOLC redline grades
 ```{r}
-colors <- c("#caffbf", "#a0c4ff", "#fdffb6", "#ffadad")
+colors <- c("#90be6d", "#277da1", "#f9c74f", "#f94144")
 ```
 
 ```{r}
+# Check for matching crs before mapping
+if (st_crs(la_county) == st_crs(holc)){
+  print('CRSs match')
+} else {
+  warning("CRSs don't match")
+}
+
+# Plot distribution of HOLC grades across LA county
 tm_shape(la_county, bbox = st_bbox(holc)) +
   tm_fill() +
 tm_shape(holc) +
   tm_fill(fill = 'grade',
-              fill.scale = tm_scale(values = colors)) 
+          fill.scale = tm_scale(values = colors),
+          fill.legend = tm_legend(title = "Grade")) +
+tm_title(text = "HOLC Grades Across LA County")
 
 ```
 
 ## 1.2 Table of Percentage of Census block group in each HOLC grade
 ```{r}
+# Join holc & la_county dfs
 combined_la_holc <- st_join(x = holc, y = la_county) |> 
-  st_drop_geometry() 
+  st_drop_geometry() # Drop geometries
 
-grade_percent <- combined_la |> 
+# Group & create holc summary statistics
+grade_percent_df <- combined_la_holc |> 
   group_by(grade) |> 
   summarise(count = n()) |> 
-  mutate(grade_perc = (count / sum(count)) * 100)
+  mutate(grade_percentage = round(x = (count / sum(count)) * 100, digits = 2))
 
-kable(grade_percent)
+# Display table
+kable(grade_percent_df)
 
 ```
 
 ## 1.3 HOLC grades visuals
 ```{r}
-ej_conditions_holc <- combined_la |> 
+# Group & create ejscreen summary statistics
+ej_conditions_df <- combined_la_holc |> 
   group_by(grade) |> 
   summarise(lowincpct_mean = mean(LOWINCPCT) * 100,
             p_pm25_mean = mean(P_PM25),
             p_lifeexppct_mean = mean(P_LIFEEXPPCT, na.rm = TRUE))
+```
+
+```{r}
+# Create low-income percentage plot
+lowinc <- ej_conditions_df |> 
+  ggplot(aes(x = grade, y = lowincpct_mean, fill = grade)) +
+  scale_fill_manual(values = colors, na.value = 'grey59') +
+  geom_bar(stat = 'identity') +
+  labs(x = "Grade",
+       y = "Percent Low Income Mean (%)")
+
+# Create pm2.5 plot
+pm25 <- ej_conditions_df |> 
+  ggplot(aes(x = grade, y = p_pm25_mean, fill = grade)) +
+  scale_fill_manual(values = colors, na.value = 'grey59') +
+  geom_bar(stat = 'identity') +
+  labs(x = "Grade",
+       y = "Percentile PM2.5 mean")
+
+# Create life expenctancy plot
+life_ex <- ej_conditions_df |> 
+  ggplot(aes(x = grade, y = p_lifeexppct_mean, fill = grade)) +
+  scale_fill_manual(values = colors, na.value = 'grey59') +
+  geom_bar(stat = 'identity') +
+  labs(x = "Grade",
+       y = "Percentile Life Expectancy Mean")
+
+# Patchwork together
+(lowinc + pm25) / life_ex
+```
+
+## 1.4 Part 1 Summary
+
+# Part 2: Redlining & Bird Observations
+
+## 2.1 Bird Observations per HOLC grade
+```{r}
+# Check for matching crs for joining
+if (st_crs(holc) == st_crs(birds)){
+  print('CRSs match')
+} else {
+  warning("CRSs don't match")
+}
+
+# Spatially join holc & birds df
+holc_birds <- st_join(holc, birds)
+```
+
+```{r}
+# Create dataframe of birds summary statistics
+bird_percent_df <- holc_birds |> 
+  group_by(grade) |> 
+  summarise(bird_obs_count = n()) |>
+  mutate(bird_obs_perc = (bird_obs_count / sum(bird_obs_count)) * 100) |> 
+  st_drop_geometry()
+
+ggplot(bird_percent_df, aes(x = grade, y = bird_obs_perc, fill = grade)) +
+  scale_fill_manual(values = colors, na.value = 'grey59') +
+  geom_bar(stat = 'identity') +
+  labs(title = "Bird Observation Percentage by Grade",
+       x = "Grade",
+       y = "Percentage (%)") 
 ```
 
