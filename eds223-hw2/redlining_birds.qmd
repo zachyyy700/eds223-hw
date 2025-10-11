@@ -90,7 +90,7 @@ ej_conditions_df <- combined_la_holc |>
 lowinc <- ej_conditions_df |> 
   ggplot(aes(x = grade, y = lowincpct_mean, fill = grade)) +
   scale_fill_manual(values = colors, na.value = 'grey59') +
-  geom_bar(stat = 'identity') +
+  geom_bar(stat = 'identity', show.legend = FALSE) +
   labs(x = "Grade",
        y = "Percent Low Income Mean (%)")
 
@@ -98,7 +98,7 @@ lowinc <- ej_conditions_df |>
 pm25 <- ej_conditions_df |> 
   ggplot(aes(x = grade, y = p_pm25_mean, fill = grade)) +
   scale_fill_manual(values = colors, na.value = 'grey59') +
-  geom_bar(stat = 'identity') +
+  geom_bar(stat = 'identity', show.legend = FALSE) +
   labs(x = "Grade",
        y = "Percentile PM2.5 mean")
 
@@ -106,7 +106,7 @@ pm25 <- ej_conditions_df |>
 life_ex <- ej_conditions_df |> 
   ggplot(aes(x = grade, y = p_lifeexppct_mean, fill = grade)) +
   scale_fill_manual(values = colors, na.value = 'grey59') +
-  geom_bar(stat = 'identity') +
+  geom_bar(stat = 'identity', show.legend = FALSE) +
   labs(x = "Grade",
        y = "Percentile Life Expectancy Mean")
 
@@ -141,7 +141,7 @@ bird_percent_df <- holc_birds |>
 
 ggplot(bird_percent_df, aes(x = grade, y = bird_obs_perc, fill = grade)) +
   scale_fill_manual(values = colors, na.value = 'grey59') +
-  geom_bar(stat = 'identity') +
+  geom_bar(stat = 'identity', show.legend = FALSE) +
   labs(title = "Bird Observation Percentage by Grade",
        x = "Grade",
        y = "Percentage (%)") 
