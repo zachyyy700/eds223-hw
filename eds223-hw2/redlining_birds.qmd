@@ -7,6 +7,7 @@ execute:
 ---
 
 ```{r}
+# Load packages & set ggplot theme
 library(tidyverse)
 library(sf)
 library(tmap)
@@ -16,6 +17,7 @@ theme_set(theme_light())
 ```
 
 ```{r}
+# Load data
 ejscreen <- st_read(here::here('data', 'ejscreen', 'EJSCREEN_2023_BG_StatePct_with_AS_CNMI_GU_VI.gdb'))
 
 holc <- st_read(here::here('data','mapping-inequality' ,'mapping-inequality-los-angeles.json')) |> 
@@ -139,6 +141,7 @@ bird_percent_df <- holc_birds |>
   mutate(bird_obs_perc = (bird_obs_count / sum(bird_obs_count)) * 100) |> 
   st_drop_geometry()
 
+# Create barplot of bird observations percent by grade
 ggplot(bird_percent_df, aes(x = grade, y = bird_obs_perc, fill = grade)) +
   scale_fill_manual(values = colors, na.value = 'grey59') +
   geom_bar(stat = 'identity', show.legend = FALSE) +
