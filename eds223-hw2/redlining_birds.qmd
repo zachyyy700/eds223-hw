@@ -4,6 +4,8 @@ format: html
 editor: source
 execute: 
   warning: false
+  message: false
+  cache: true
 ---
 
 ```{r}
@@ -41,7 +43,7 @@ la_county <- ejscreen |>
 colors <- c("#90be6d", "#277da1", "#f9c74f", "#f94144")
 ```
 
-```{r}
+```{r, fig.width=9, fig.height=8}
 # Check for matching crs before mapping
 if (st_crs(la_county) == st_crs(holc)){
   print('CRSs match')
@@ -51,13 +53,15 @@ if (st_crs(la_county) == st_crs(holc)){
 
 # Plot distribution of HOLC grades across LA county
 tm_shape(la_county, bbox = st_bbox(holc)) +
-  tm_fill() +
+  tm_fill(fill = "grey40", col = "grey40") +
 tm_shape(holc) +
   tm_fill(fill = 'grade',
           fill.scale = tm_scale(values = colors),
-          fill.legend = tm_legend(title = "Grade")) +
-tm_title(text = "HOLC Grades Across LA County")
-
+          fill.legend = tm_legend(title = "Grade", position = c("top", "right"))) +
+tm_title(text = "HOLC Grades Across LA County") +
+tm_compass(type = "4star", position = c("bottom", "right")) +
+tm_scalebar(position = c("bottom", "right"), text.size = 0.7) +
+tm_layout(bg.color = "#78d5d7")
 ```
 
 ## 1.2 Table of Percentage of Census block group in each HOLC grade
@@ -70,10 +74,13 @@ combined_la_holc <- st_join(x = holc, y = la_county) |>
 grade_percent_df <- combined_la_holc |> 
   group_by(grade) |> 
   summarise(count = n()) |> 
-  mutate(grade_percentage = round(x = (count / sum(count)) * 100, digits = 2))
+  mutate(grade_percentage = round(x = (count / sum(count)) * 100, digits = 2)) |> 
+  ungroup()
 
 # Display table
-kable(grade_percent_df)
+kable(grade_percent_df, 
+      col.names = c("Grade", "Count", "Percentage (%)"),
+      caption = "Table 1. Percentage of Census Block Groups by HOLC Grade")
 
 ```
 
@@ -87,14 +94,15 @@ ej_conditions_df <- combined_la_holc |>
             p_lifeexppct_mean = mean(P_LIFEEXPPCT, na.rm = TRUE))
 ```
 
-```{r}
+```{r fig.height=7}
 # Create low-income percentage plot
 lowinc <- ej_conditions_df |> 
   ggplot(aes(x = grade, y = lowincpct_mean, fill = grade)) +
   scale_fill_manual(values = colors, na.value = 'grey59') +
   geom_bar(stat = 'identity', show.legend = FALSE) +
   labs(x = "Grade",
-       y = "Percent Low Income Mean (%)")
+       y = "Percent Low Income Mean (%)",
+       tag = "A")
 
 # Create pm2.5 plot
 pm25 <- ej_conditions_df |> 
@@ -102,21 +110,25 @@ pm25 <- ej_conditions_df |>
   scale_fill_manual(values = colors, na.value = 'grey59') +
   geom_bar(stat = 'identity', show.legend = FALSE) +
   labs(x = "Grade",
-       y = "Percentile PM2.5 mean")
+       y = "Percentile PM2.5 mean",
+       tag = "B")
 
-# Create life expenctancy plot
+# Create life expectancy plot
 life_ex <- ej_conditions_df |> 
   ggplot(aes(x = grade, y = p_lifeexppct_mean, fill = grade)) +
   scale_fill_manual(values = colors, na.value = 'grey59') +
   geom_bar(stat = 'identity', show.legend = FALSE) +
   labs(x = "Grade",
-       y = "Percentile Life Expectancy Mean")
+       y = "Percentile Low Life Expectancy Mean",
+       tag = "C")
 
 # Patchwork together
-(lowinc + pm25) / life_ex
+lowinc / (pm25 + life_ex) & theme_light()
 ```
 
-## 1.4 Part 1 Summary
+## 1.4 Summary
+
+Comparing the means of all three variables of interest: 1. percent low income (A) 2. PM2.5 percentile (B) 3. low life expectancy percentile (C), shows a clear relationship with HOLC grade. Grade A has the lowest mean for all three variables. On the other hand, Grade D has the highest means, with a sequential increase by grade in-between Grades A-D. These relationships show that historically redlined neighborhoods face greater environmental burdens and disproportionate health disparities compared to locations with a better HOLC grade. 
 
 # Part 2: Redlining & Bird Observations
 
@@ -150,3 +162,4 @@ ggplot(bird_percent_df, aes(x = grade, y = bird_obs_perc, fill = grade)) +
        y = "Percentage (%)") 
 ```
 
+## 2.2 Summary
