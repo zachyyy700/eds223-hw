@@ -152,14 +152,29 @@ bird_percent_df <- holc_birds |>
   summarise(bird_obs_count = n()) |>
   mutate(bird_obs_perc = (bird_obs_count / sum(bird_obs_count)) * 100) |> 
   st_drop_geometry()
+```
 
+```{r}
 # Create barplot of bird observations percent by grade
 ggplot(bird_percent_df, aes(x = grade, y = bird_obs_perc, fill = grade)) +
   scale_fill_manual(values = colors, na.value = 'grey59') +
   geom_bar(stat = 'identity', show.legend = FALSE) +
-  labs(title = "Bird Observation Percentage by Grade",
+  labs(title = "Percentage of Total Bird Observations by Grade",
        x = "Grade",
        y = "Percentage (%)") 
 ```
 
 ## 2.2 Summary
+
+The bar plot above shows that Grade C locations contain the highest percentage of bird observations. However, the results of Ellis-Soto et al. 2023 show that locations with a Grade A rating have the highest rates of bird observations when accounting for sampling density. In the methods section of Ellis-Soto et al. 2023, it is stated that the total area of each HOLC grade was calculated and then used to calculate how bird observations differed across grades. Without considering the amount of total area for each grade, grades that cover more area (Grade C) would appear to have the majority of bird observations.
+
+```{r}
+holc_birds |> 
+  group_by(grade) |> 
+  summarise(total_area_km2 = as.numeric(sum(st_area(geometry)) / 1e6)) |> 
+  
+  ggplot(aes(grade, total_area_km2, fill = grade)) +
+  scale_fill_manual(values = colors, na.value = 'grey59') +
+  geom_bar(stat = "identity", show.legend = FALSE) 
+```
+
