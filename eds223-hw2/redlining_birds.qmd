@@ -15,7 +15,6 @@ library(sf)
 library(tmap)
 library(kableExtra)
 library(patchwork)
-theme_set(theme_light())
 ```
 
 ```{r}
@@ -31,7 +30,7 @@ birds <- st_read(here::here('data', 'gbif-birds-LA', 'gbif-birds-LA.shp'))
 ```{r}
 # Filter ejscreen data to LA county
 la_county <- ejscreen |> 
-  filter(CNTY_NAME %in% c("Los Angeles County", "Orange County", "San Bernardino County")) |> # FIXME
+  filter(CNTY_NAME %in% c("Los Angeles County", "Orange County", "San Bernardino County")) |> 
   filter(AREALAND != 0) |> # Exclude water bodies 
   st_transform(crs = 4326) # Transform to EPSG:4326 crs
 ```
@@ -57,10 +56,10 @@ tm_shape(la_county, bbox = st_bbox(holc)) +
 tm_shape(holc) +
   tm_fill(fill = 'grade',
           fill.scale = tm_scale(values = colors),
-          fill.legend = tm_legend(title = "Grade", position = c("top", "right"))) +
+          fill.legend = tm_legend(title = "Grade", position = c("top", "right"), height = 11, width = 6)) +
 tm_title(text = "HOLC Grades Across LA County") +
-tm_compass(type = "4star", position = c("bottom", "right")) +
-tm_scalebar(position = c("bottom", "right"), text.size = 0.7) +
+tm_compass(type = "4star", position = c("bottom", "right"), size = 5) +
+tm_scalebar(position = c("bottom", "right"), text.size = 0.9) +
 tm_layout(bg.color = "#78d5d7")
 ```
 
@@ -161,7 +160,8 @@ ggplot(bird_percent_df, aes(x = grade, y = bird_obs_perc, fill = grade)) +
   geom_bar(stat = 'identity', show.legend = FALSE) +
   labs(title = "Percentage of Total Bird Observations by Grade",
        x = "Grade",
-       y = "Percentage (%)") 
+       y = "Percentage (%)") +
+  theme_light()
 ```
 
 ## 2.2 Summary
@@ -171,11 +171,13 @@ The bar plot above shows that Grade C locations contain the most bird observatio
 ```{r}
 area_holc_birds <- holc_birds|> 
   group_by(grade) |> 
-  summarise(total_area_km2 = as.numeric(sum(st_area(geometry)) / 1e6)) |> 
+  summarise(total_area_km2 = as.numeric(sum(unique(st_area(geometry)) / 1e6))) |> 
   st_drop_geometry()
-  
-  ggplot(aes(grade, total_area_km2, fill = grade)) +
+
+ggplot(data = area_holc_birds, aes(grade, total_area_km2, fill = grade)) +
   scale_fill_manual(values = colors, na.value = 'grey59') +
-  geom_bar(stat = "identity", show.legend = FALSE) 
+  labs(x = "Grade", y = "Total Area (square kilometers)", title = "Total Area by Grade") +
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  theme_light()
 ```
 
