@@ -31,7 +31,7 @@ birds <- st_read(here::here('data', 'gbif-birds-LA', 'gbif-birds-LA.shp'))
 ```{r}
 # Filter ejscreen data to LA county
 la_county <- ejscreen |> 
-  filter(CNTY_NAME %in% c("Los Angeles County")) |> 
+  filter(CNTY_NAME %in% c("Los Angeles County", "Orange County", "San Bernardino County")) |> # FIXME
   filter(AREALAND != 0) |> # Exclude water bodies 
   st_transform(crs = 4326) # Transform to EPSG:4326 crs
 ```
@@ -169,9 +169,10 @@ ggplot(bird_percent_df, aes(x = grade, y = bird_obs_perc, fill = grade)) +
 The bar plot above shows that Grade C locations contain the most bird observations by percentage. However, the results of Ellis-Soto et al. 2023 show that locations with a Grade A rating have the highest number of bird observations per kilometer squared when accounting for sampling density. In the methods section of Ellis-Soto et al. 2023, it is stated that the total area of each HOLC grade was calculated and then used to calculate how bird observations differed across grades. Without considering the amount of total area for each grade, grades that cover more area (Grade C) would appear to have the majority of bird observations. Factoring in sample density per area adjusts observation counts relative to area so that larger areas don't disproportionately affect the results. 
 
 ```{r}
-holc_birds |> 
+area_holc_birds <- holc_birds|> 
   group_by(grade) |> 
   summarise(total_area_km2 = as.numeric(sum(st_area(geometry)) / 1e6)) |> 
+  st_drop_geometry()
   
   ggplot(aes(grade, total_area_km2, fill = grade)) +
   scale_fill_manual(values = colors, na.value = 'grey59') +
