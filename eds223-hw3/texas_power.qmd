@@ -1,0 +1,7 @@
+---
+title: "texas_power"
+format: html
+author: Zach Loo
+date: October 25, 2025
+---
+
