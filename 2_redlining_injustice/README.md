@@ -4,6 +4,18 @@
 
 This folder contains the contents for homework 2. This homework's main goal is to explore how the Home Owner's Loan Corporation (HOLC) rated neighborhoods based on their "desirability" and redlining's lasting effects.
 
+```{=html}
+.
+├── 2_redlining_injustice.Rproj
+├── data
+│   ├── ejscreen/
+│   ├── gbif-birds-LA/
+│   └── mapping-inequality/
+├── README.md
+├── redlining_birds.pdf
+└── redlining_birds.qmd
+```
+
 ### Data
 
 -   EJScreen: From the Environmental Protection Agency (EPA), Environmental Justice Screening and Mapping Tool. EJScreen provides data on demographic and environmental information at the Census tract and block group levels.
