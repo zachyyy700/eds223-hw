@@ -1,3 +1,11 @@
+# New name data
+*/data/
+
+# New name cache
+*/*_cache
+# New name quarto artifacts
+*/*.html
+*/*_files/
 # Cache
 eds223-hw*/*_cache
 
