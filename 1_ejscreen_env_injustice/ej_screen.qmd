@@ -1,0 +1,81 @@
+---
+title: "Homework 1: Environmental Injustice"
+execute: 
+  warning: false
+  message: false
+  cache: true
+format: html
+author: "Zach Loo"
+date: "October 6, 2025"
+---
+
+```{r}
+# Load packages
+pacman::p_load('tidyverse', 'sf', 'here', 'tmap', 'tmaptools')
+```
+
+```{r}
+# Load data with sf package
+ejscreen <- sf::st_read(here::here("data", "ejscreen","EJSCREEN_2023_BG_StatePct_with_AS_CNMI_GU_VI.gdb"), quiet = TRUE)
+```
+
+# Clayton County, Georgia, USA
+
+```{r}
+# filter to Georgia state
+georgia <- ejscreen |> 
+  filter(ST_ABBREV == "GA") 
+
+# filter to Clayton County, Georgia
+clayton <- georgia |> 
+  filter(CNTY_NAME %in% c("Clayton County"))
+```
+
+```{r}
+# Create first map
+tm_shape(clayton) +
+  tm_polygons(fill = "PEOPCOLORPCT",
+              # Use tm_scale_continuous for continuous variable
+              fill.scale = tm_scale_continuous(values = 'brewer.yl_or_rd'),
+              
+              # Adjust legend
+              fill.legend = tm_legend(title = "Percent People of Color",
+                                      reverse = TRUE,
+                                      labels = c("100%", "80%", "60%", "40%", "20%", "0%"))) +
+  
+  # Add title, compass, and scalebar
+  tm_title(text = "Clayton County: Percent People of Color", fontface = 'bold') +
+  tm_compass(position = c("left", "top"), type = '4star') + 
+  tm_scalebar(position = c(0.05, 0.71), text.size = 0.6) + 
+  
+  # Adjust legend position and inner map margins to fit legend inside of map frame
+  tm_layout(legend.position = c("left", "bottom"), 
+            inner.margins = c(0.05, 0.69, 0.05, 0.05)) 
+```
+
+```{r}
+# Create second map
+tm_shape(clayton) +
+  tm_polygons(fill = "RESP",
+              fill.scale = tm_scale_continuous(values = 'brewer.yl_or_rd'),
+              fill.legend = tm_legend(title = "Respiratory Hazard Index",
+                                      reverse = TRUE,
+                                      height = 18)) +
+  tm_title(text = "Clayton County: Respiratory Hazard Index", fontface = 'bold') +
+  tm_compass(position = c("left", "top"), type = '4star') +
+  tm_scalebar(position = c(0.05, 0.71), text.size = 0.6) +
+  tm_layout(legend.position = c("left", "bottom"),
+            inner.margins = c(0.05, 0.75, 0.05, 0.05))
+```
+
+### Summary
+
+The state of Georgia has some of the nation's worst air quality according to the [American Lung Association](https://www.lung.org/research/sota/city-rankings/states/georgia). Additionally, the [U.S. Census Bureau](https://www.census.gov/topics/population/data.html) has ranked Georgia as second highest percent black population in the US. The first map shows this distribution of percent people of color in Clayton County, Georgia concentrated in northern parts of the county. The second map shows the distribution of the EPA's AirToxScreen respiratory hazard index, derived from measuring toxic pollutants in ambient outdoor air. The hazard index is a unit-less measurement of the risk for developing non-cancer respiratory illnesses like asthma and bronchitis. The most hazardous districts lie in close proximity to districts with higher percentage of black populations which shows one example of environmental injustice that black communities face in the US.
+
+### References
+
+-   United States Environmental Protection Agency, 2025. *EJSCREEN*. Retrieved: October 6, 2025, from \[<https://19january2021snapshot.epa.gov/ejscreen.html>\]
+
+-   American Lung Association, 2025. *Report Card: Georgia*. \[<https://www.lung.org/research/sota/city-rankings/states/georgia>\]
+
+-   United States Census Bureau, 2024. *2023 Population Estimates Black alone population - Population Division*. \[<https://www.census.gov/topics/population/data.html>\]
