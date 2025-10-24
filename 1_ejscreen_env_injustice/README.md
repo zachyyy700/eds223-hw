@@ -1,6 +1,8 @@
 # Homework 1: Environmental Injustice
 
-## Description
+### Description
+
+This folder contains the contents for homework 1. This homework's main goal is to explore an area of interest (Clayton, Georgia) and analyze the relationship between EJSCREEN metrics.
 
 ### Task
 
