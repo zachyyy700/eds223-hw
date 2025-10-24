@@ -5,11 +5,11 @@
 This folder contains the contents for homework 1. This homework's main goal is to explore an area of interest (Clayton, Georgia) and analyze the relationship between EJSCREEN metrics.
 
 ```{=html}
-├── 1_ejscreen_env_injustice.Rproj\
-├── data\
-  └── ejscreen/\
-├── ej_screen.pdf\
-├── ej_screen.qmd\
+├── 1_ejscreen_env_injustice.Rproj
+├── data
+  └── ejscreen/
+├── ej_screen.pdf
+├── ej_screen.qmd
 ├── README.md
 ```
 
