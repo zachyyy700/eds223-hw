@@ -1,0 +1,25 @@
+# Data
+*/data/
+
+# Cache
+*/*_cache
+# Quarto artifacts
+*/*.html
+*/*_files/
+# Cache
+eds223-hw*/*_cache
+
+# Data
+eds223-hw*/data/
+
+# R proj user
+eds223-hw*/.Rproj.user/
+
+# R history
+eds223-hw*/.Rhistory
+*/.Rhistory
+.Rproj.user
+
+# DS Store
+.DS_Store
+eds223-hw*/.DS_Store

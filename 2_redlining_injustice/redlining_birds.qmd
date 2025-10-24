@@ -1,0 +1,267 @@
+---
+title: "Homework 2: Redlining & Environmental Injustice"
+author: "Zach Loo"
+date: "October 18, 2025"
+format: html
+editor: source
+execute: 
+  warning: false
+  message: false
+  cache: true
+---
+
+```{r}
+# Load packages & set ggplot theme
+library(tidyverse)
+library(sf)
+library(tmap)
+library(kableExtra)
+library(patchwork)
+```
+
+```{r}
+# Load data
+ejscreen <- st_read(here::here('data', 'ejscreen', 'EJSCREEN_2023_BG_StatePct_with_AS_CNMI_GU_VI.gdb'), quiet = TRUE)
+
+holc <- st_read(here::here('data','mapping-inequality' ,'mapping-inequality-los-angeles.json'), quiet = TRUE) |>
+  st_make_valid() # Make invalid geometries valid
+
+birds <- st_read(here::here('data', 'gbif-birds-LA', 'gbif-birds-LA.shp'), quiet = TRUE)
+```
+
+```{r}
+# Filter ejscreen data to counties of interest for basemap
+la_county <- ejscreen |> 
+  filter(CNTY_NAME %in% c("Los Angeles County", "Orange County", "San Bernardino County")) |> 
+  filter(AREALAND != 0) |> # Exclude water bodies 
+  st_transform(crs = 4326) # Transform to EPSG:4326 crs
+```
+
+# Part 1: Redlining & Environmental Justice
+
+## 1.1 Map of HOLC redline grades
+
+```{r}
+# Check for matching crs before mapping
+if (st_crs(la_county) == st_crs(holc)){
+  print('CRSs match')
+} else {
+  warning("CRSs don't match")
+}
+```
+
+```{r}
+# Create custom color list for plots
+colors <- c("#90be6d", "#277da1", "#f9c74f", "#f94144")
+```
+
+```{r fig.width=9, fig.height=8}
+# Plot distribution of HOLC grades across LA county
+tm_shape(la_county, bbox = st_bbox(holc)) +
+  tm_fill(fill = "grey40", col = "grey40") +
+tm_shape(holc) +
+  tm_fill(fill = 'grade',
+          fill.scale = tm_scale(values = colors),
+          fill.legend = tm_legend(title = "Grade", position = c("top", "right"), height = 11, width = 6)) +
+tm_title(text = "HOLC Grades Across LA County") +
+tm_compass(type = "4star", position = c("bottom", "right"), size = 5) +
+tm_scalebar(position = c("bottom", "right"), text.size = 0.9) +
+tm_layout(bg.color = "#78d5d7")
+
+```
+
+## 1.2 Table of Percentage of Census block group in each HOLC grade
+```{r}
+# Join holc & la_county dfs
+combined_la_holc <- st_join(x = holc, y = la_county) |> 
+  st_drop_geometry() # Drop geometries
+
+# Group & create holc summary statistics
+grade_percent_df <- combined_la_holc |> 
+  group_by(grade) |> 
+  summarise(count = n()) |> 
+  mutate(grade_percentage = round(x = (count / sum(count)) * 100, digits = 2)) |> 
+  ungroup()
+
+# Display table
+kable(grade_percent_df, 
+      col.names = c("Grade", "Count", "Percentage (%)"),
+      caption = "Table 1. Percentage of Census Block Groups by HOLC Grade")
+
+```
+
+## 1.3 HOLC grades visuals
+
+### Barplots
+```{r}
+# Group & create ejscreen summary statistics
+ej_conditions_df <- combined_la_holc |> 
+  group_by(grade) |> 
+  summarise(lowincpct_mean = mean(LOWINCPCT) * 100,
+            p_pm25_mean = mean(P_PM25),
+            p_lifeexppct_mean = mean(P_LIFEEXPPCT, na.rm = TRUE))
+```
+
+```{r fig.height=7}
+# Create low-income percentage plot
+lowinc <- ej_conditions_df |> 
+  ggplot(aes(x = grade, y = lowincpct_mean, fill = grade)) +
+  scale_fill_manual(values = colors, na.value = 'grey59') +
+  geom_bar(stat = 'identity', show.legend = FALSE) +
+  labs(x = "Grade",
+       y = "Percent Low Income Mean (%)",
+       tag = "A")
+
+# Create pm2.5 plot
+pm25 <- ej_conditions_df |> 
+  ggplot(aes(x = grade, y = p_pm25_mean, fill = grade)) +
+  scale_fill_manual(values = colors, na.value = 'grey59') +
+  geom_bar(stat = 'identity', show.legend = FALSE) +
+  labs(x = "Grade",
+       y = "Percentile PM2.5 Mean",
+       tag = "B")
+
+# Create life expectancy plot
+life_ex <- ej_conditions_df |> 
+  ggplot(aes(x = grade, y = p_lifeexppct_mean, fill = grade)) +
+  scale_fill_manual(values = colors, na.value = 'grey59') +
+  geom_bar(stat = 'identity', show.legend = FALSE) +
+  labs(x = "Grade",
+       y = "Percentile Low Life Expectancy Mean",
+       tag = "C")
+
+# Patchwork together
+lowinc / (pm25 + life_ex)  + plot_annotation(title = "Figure 1.3.1. EJScreen Metrics - Comparisons by HOLC Grade") & theme_light()
+```
+
+
+### Spatially related maps
+
+```{r}
+# Join holc & ejscreen LA but keep geometries
+la_holc_geoms <- st_join(x = holc, y = la_county)
+
+# Confirm class
+class(la_holc_geoms)
+```
+
+```{r fig.height=11, fig.width=12}
+# Grades map
+grades_map <- tm_shape(la_county, bbox = st_bbox(holc)) +
+  tm_fill(fill = "grey40", col = "grey40") +
+tm_shape(holc) +
+  tm_fill(fill = 'grade',
+          fill.scale = tm_scale(values = 'brewer.yl_or_rd'),
+          fill.legend = tm_legend(title = "Grade",
+                                  text.size = 0.9,
+                                  width = 8,
+                                  height = 12)) +
+  tm_layout(legend.position = c("right", "bottom")) +
+  tm_compass(position = c("right", "top")) +
+  tm_scalebar(position = c(0.6, 0.95), text.size = 0.75) +
+  tm_title(text = "Figure 1.3.2. EJScreen Metrics - Spatial Comparison")
+
+# Percent low income map
+lowinc_map <- tm_shape(la_county, bbox = st_bbox(holc)) +
+  tm_fill(fill = "grey40", col = "grey40") +
+tm_shape(la_holc_geoms) +
+  tm_fill(fill = "LOWINCPCT",
+          fill.scale = tm_scale_continuous(values = 'brewer.yl_or_rd'),
+          fill.legend = tm_legend(title = "Percent Low Income",
+                                  reverse = TRUE,
+                                  labels = c("100%", "80%", "60%", "40%", "20%", "0%"),
+                                  height = 16)) +
+  tm_layout(legend.position = c("right", "bottom"),
+            inner.margins = c(0.05, 0, 0, 0)) +
+  tm_title(text = " ")
+
+# Percentile PM2.5 map
+pm25_map <- tm_shape(la_county, bbox = st_bbox(holc)) +
+  tm_fill(fill = "grey40", col = "grey40") +
+tm_shape(la_holc_geoms) +
+  tm_fill(fill = "P_PM25",
+          fill.scale = tm_scale(values = 'brewer.yl_or_rd'),
+          fill.legend = tm_legend(title = "PM2.5 Percentile", 
+                                  reverse = TRUE,
+                                  text.size = 0.8)) +
+  tm_layout(legend.position = c("right", "bottom"))
+
+# Percentile low life expectancy map
+life_ex_map <- tm_shape(la_county, bbox = st_bbox(holc)) +
+  tm_fill(fill = "grey40", col = "grey40") +
+tm_shape(la_holc_geoms) +
+  tm_fill(fill = "P_LIFEEXPPCT",
+          fill.scale = tm_scale(values = 'brewer.yl_or_rd'), 
+          fill.legend = tm_legend(title = "Low Life Expentancy\nPercentile", 
+                                  reverse = TRUE,
+                                  width = 11, height = 13)) +
+  tm_layout(legend.position = c("right", "bottom"))
+
+# Combine maps
+tmap_arrange(grades_map, lowinc_map, pm25_map, life_ex_map, nrow = 2)
+```
+
+
+## 1.4 Summary
+
+Comparing the means of all three variables of interest (Figure 1.3.1): 1. percent low income (A) 2. PM2.5 percentile (B) 3. low life expectancy percentile (C), shows a clear relationship with HOLC grade. Grade A has the lowest mean for all three variables. On the other hand, Grade D has the highest means, with a sequential increase by grade in-between Grades A-D. The four maps (Figure 1.3.2), compare the same three variables and show the spatial distribution across LA. Neighborhoods with worse HOLC grades tend to have higher percentage of low income populations. Additionally, these neighborhoods have higher percentiles for PM2.5 and low life expectancy, indicating worse air quality and shorter life expectancy compared to the rest of California State. These relationships show that historically redlined neighborhoods face greater environmental burdens and disproportionate health disparities compared to locations with a higher HOLC grade. 
+
+# Part 2: Redlining & Bird Observations
+
+## 2.1 Bird Observations per HOLC grade
+```{r}
+# Check for matching crs for joining
+if (st_crs(holc) == st_crs(birds)){
+  print('CRSs match')
+} else {
+  warning("CRSs don't match")
+}
+
+# Spatially join holc & birds df
+holc_birds <- st_join(holc, birds)
+```
+
+```{r}
+# Create dataframe of birds summary statistics
+bird_percent_df <- holc_birds |> 
+  group_by(grade) |> 
+  summarise(bird_obs_count = n()) |>
+  mutate(bird_obs_perc = (bird_obs_count / sum(bird_obs_count)) * 100) |> 
+  st_drop_geometry()
+```
+
+```{r}
+# Create barplot of bird observations percent by grade
+ggplot(bird_percent_df, aes(x = grade, y = bird_obs_perc, fill = grade)) +
+  scale_fill_manual(values = colors, na.value = 'grey59') +
+  geom_bar(stat = 'identity', show.legend = FALSE) +
+  labs(title = "Figure 2.1. Percentage of Total Bird Observations by Grade",
+       x = "Grade",
+       y = "Percentage (%)") +
+  theme_light()
+```
+
+## 2.2 Summary
+
+Figure 2 shows that Grade C locations contain the most bird observations by percentage. However, the results of Ellis-Soto et al. 2023 show that locations with a Grade A rating have the highest number of bird observations per kilometer squared when accounting for sampling density. In the methods section of Ellis-Soto et al. 2023, it is stated that the total area of each HOLC grade was calculated and then used to calculate how bird observations differed across grades. Without considering the amount of total area for each grade, grades that cover more area (Grade C) would appear to have the majority of bird observations. Factoring in sample density per area adjusts observation counts relative to area so that larger areas don't disproportionately affect the results. 
+
+```{r}
+area_holc_birds <- holc_birds|> 
+  group_by(grade) |> 
+  summarise(total_area_km2 = as.numeric(sum(unique(st_area(geometry)) / 1e6))) |> 
+  st_drop_geometry()
+
+ggplot(data = area_holc_birds, aes(grade, total_area_km2, fill = grade)) +
+  scale_fill_manual(values = colors, na.value = 'grey59') +
+  labs(x = "Grade", y = "Total Area (square kilometers)", title = "Figure 2.2. Total Area by Grade") +
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  theme_light()
+```
+
+# References
+
+- United States Environmental Protection Agency, 2025. EJSCREEN. Retrieved: October 16, 2025, from (https://19january2021snapshot.epa.gov/ejscreen.html). 
+
+- Nelson, Robert K., LaDale Winling, et al. "Mapping Inequality: Redlining in New Deal America." Edited by Robert K. Nelson. American Panorama: An Atlas of United States History, 2023. Retrieved: October 16, 2025 from (https://dsl.richmond.edu/panorama/redlining)
+
+- Global Biodiversity Information Facility, 2021. GBIF. Retrieved: October 16, 2025 from (https://www.gbif.org/)

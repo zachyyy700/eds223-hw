@@ -1,0 +1,66 @@
+---
+title: "texas_power"
+format: html
+author: Zach Loo
+date: October 25, 2025
+execute:
+  warning: false
+  message: false
+  cache: true
+---
+
+```{r}
+# Load packages
+pacman::p_load('terra', 'tidyverse', 'tmap', 'kableExtra', 'stars')
+```
+
+```{r}
+# Load data
+lights_07_1 <- read_stars(here::here('data', 'VNP46A1', 'VNP46A1.A2021038.h08v05.001.2021039064328.tif'))
+
+lights_07_2 <- read_stars(here::here('data', 'VNP46A1', 'VNP46A1.A2021038.h08v06.001.2021039064329.tif'))
+
+lights_16_1 <- read_stars(here::here('data', 'VNP46A1', 'VNP46A1.A2021047.h08v05.001.2021048091106.tif'))
+
+lights_16_2 <- read_stars(here::here('data', 'VNP46A1', 'VNP46A1.A2021047.h08v06.001.2021048091105.tif'))
+
+```
+
+```{r}
+# Merge Feb 7th rasters
+lights_07 <- st_mosaic(lights_07_1, lights_07_2)
+
+# Merge Feb 16th rasters
+lights_16 <- st_mosaic(lights_16_1, lights_16_2)
+```
+
+```{r}
+# Get raster difference
+lights_diff <- lights_16 - lights_07
+```
+
+```{r}
+# Create Houston bounding box
+houston_bbox <- st_bbox(c(xmin = -96.5,xmax = -94.5, ymin = 29, ymax = 30.5),
+                          crs = st_crs(lights_diff))
+
+# Crop merged difference raster
+cropped_lights <- st_crop(lights_diff, houston_bbox)
+```
+
+```{r}
+# Create houston blackout mask
+cropped_lights[cropped_lights > -200] <- NA
+```
+
+```{r}
+# Vectorize mask
+vector_lights <- cropped_lights |> 
+  st_as_sf() |> 
+  st_make_valid() |> 
+  st_transform("EPSG:3083")
+
+# Rename first column name
+colnames(vector_lights)[1] <- "light_difference"
+```
+
