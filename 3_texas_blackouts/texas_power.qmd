@@ -1,8 +1,9 @@
 ---
-title: "texas_power"
+title: "Homework 3: 2021 Texas Blackouts"
+author: "Zach Loo"
+date: "October 25, 2025"
 format: html
-author: Zach Loo
-date: October 25, 2025
+editor: source
 execute:
   warning: false
   message: false
@@ -11,11 +12,15 @@ execute:
 
 ```{r}
 # Load packages
-pacman::p_load('terra', 'tidyverse', 'tmap', 'kableExtra', 'stars')
+library(terra)
+library(tidyverse)
+library(tmap)
+library(kableExtra)
+library(stars)
 ```
 
 ```{r}
-# Load data
+# Load lights data
 lights_07_1 <- read_stars(here::here('data', 'VNP46A1', 'VNP46A1.A2021038.h08v05.001.2021039064328.tif'))
 
 lights_07_2 <- read_stars(here::here('data', 'VNP46A1', 'VNP46A1.A2021038.h08v06.001.2021039064329.tif'))
@@ -26,6 +31,8 @@ lights_16_2 <- read_stars(here::here('data', 'VNP46A1', 'VNP46A1.A2021047.h08v06
 
 ```
 
+#1. Night Light Intensity Before & After Storm
+
 ```{r}
 # Merge Feb 7th rasters
 lights_07 <- st_mosaic(lights_07_1, lights_07_2)
@@ -35,18 +42,42 @@ lights_16 <- st_mosaic(lights_16_1, lights_16_2)
 ```
 
 ```{r}
+# Create Houston bounding box
+houston_bbox <- st_bbox(c(xmin = -96.5,xmax = -94.5, ymin = 29, ymax = 30.5),
+                          crs = st_crs(lights_07))
+# Crop 07 raster
+cropped_07 <- st_crop(lights_07, houston_bbox)
+# Crop 16 raster
+cropped_16 <- st_crop(lights_16, houston_bbox)
+```
+
+```{r fig.width=12, fig.height=5}
+# Plot before & after maps
+map_07 <- tm_shape(cropped_07) +
+  tm_raster(col.scale = tm_scale_continuous(values = '-brewer.greys')) + tm_legend(show = FALSE)
+            #col.legend = tm_legend(title = "Feb. 07, 2021 Light",
+                                   #orientation = 'landscape'))
+
+map_16 <- tm_shape(cropped_16) +
+  tm_raster(col.scale = tm_scale_continuous(values = '-brewer.greys')) + tm_legend(show = FALSE)
+            #col.legend = tm_legend(title = "Feb. 16, 2021 Light",
+                                   #orientation = 'landscape'))
+
+tmap_arrange(map_07, map_16, nrow = 1)
+```
+
+
+```{r}
 # Get raster difference
 lights_diff <- lights_16 - lights_07
 ```
 
 ```{r}
-# Create Houston bounding box
-houston_bbox <- st_bbox(c(xmin = -96.5,xmax = -94.5, ymin = 29, ymax = 30.5),
-                          crs = st_crs(lights_diff))
-
 # Crop merged difference raster
 cropped_lights <- st_crop(lights_diff, houston_bbox)
 ```
+
+##1.1 Create blackout mask
 
 ```{r}
 # Create houston blackout mask
@@ -55,12 +86,97 @@ cropped_lights[cropped_lights > -200] <- NA
 
 ```{r}
 # Vectorize mask
-vector_lights <- cropped_lights |> 
+blackout_areas <- cropped_lights |> 
   st_as_sf() |> 
   st_make_valid() |> 
   st_transform("EPSG:3083")
 
 # Rename first column name
-colnames(vector_lights)[1] <- "light_difference"
+colnames(blackout_areas)[1] <- "light_difference"
+```
+
+#2. Exclude highways from blackout mask
+
+```{r}
+# Load roads data but only highways
+roads <- st_read(here::here('data', 'gis_osm_roads_free_1.gpkg'), query = "SELECT * FROM gis_osm_roads_free_1 WHERE fclass='motorway'") |> 
+  st_transform("EPSG:3083")
+```
+
+```{r}
+# Initial plot
+tm_shape(blackout_areas) +
+  tm_polygons() +
+  tm_shape(roads) +
+  tm_lines()
+```
+
+```{r}
+# Create 200m buffer
+roads_buffer <- st_buffer(roads, dist = 200)
+```
+
+```{r}
+tmap_mode('plot')
+# Buffer plot
+tm_shape(blackout_areas) +
+  tm_borders(col = 'red') +
+  tm_shape(roads_buffer) +
+  tm_lines()
+```
+
+```{r}
+# Combine road geometries first
+roads_buffer_union <- st_union(roads_buffer)
+
+# Find areas NOT within buffer
+blackout_far_areas <- blackout_areas |> 
+  st_filter(y = roads_buffer_union, .predicate = st_disjoint)
+```
+
+```{r}
+# Plot far areas
+tm_shape(blackout_far_areas) +
+  tm_borders(col = 'red') +
+  tm_shape(roads_buffer_union) +
+  tm_lines() +
+  tm_scalebar()
+```
+
+```{r}
+# Check for nearest distance between blackout geoms & roads
+distances <- st_distance(blackout_far_areas, st_union(roads))
+smallest_distance <- round(as.numeric(min(distances)), 2)
+
+if (smallest_distance < 200) {
+  warning("Nearest blackout area is within 200m of a highway. Redo filter.")
+} else {
+  paste0("Nearest blackout area is ", smallest_distance,"m away.")
+}
+```
+
+#3. Identify homes impacted by blackout
+```{r}
+homes <- st_read(
+  here::here("data", "gis_osm_buildings_a_free_1.gpkg"),
+  query = "
+    SELECT *
+    FROM gis_osm_buildings_a_free_1
+    WHERE (type IS NULL AND name IS NULL)
+       OR type IN ('residential', 'apartments', 'house', 'static_caravan', 'detached')") |> 
+  st_transform("EPSG:3083")
+```
+
+```{r}
+# Find houses in blackout areas
+houses_blackout <- homes |> 
+  st_filter(y = blackout_far_areas, .predicate = st_overlaps)
+```
+
+```{r}
+tm_shape(blackout_far_areas) +
+  tm_borders(col = 'red') +
+tm_shape(houses_blackout) +
+  tm_polygons(fill = 'blue')
 ```
 
