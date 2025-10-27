@@ -144,7 +144,7 @@ smallest_distance <- round(as.numeric(min(distances)), 2)
 if (smallest_distance < 200) {
   warning("Nearest blackout area is within 200m of a highway. Redo filter.")
 } else {
-  paste0("Nearest blackout area is ", smallest_distance,"m away from a highway.")
+  paste0("Nearest blackout area is ", smallest_distance,"m away from a highway. Filter worked.")
 }
 ```
 
@@ -201,19 +201,69 @@ st_layers(here::here('data', 'ACS_2019_5YR_TRACT_48_TEXAS.gdb'))
 
 # Extract income layer
 income <- st_read(here::here('data', 'ACS_2019_5YR_TRACT_48_TEXAS.gdb'),
-                  layer = 'X19_INCOME')
+                  layer = 'X19_INCOME', quiet = TRUE) |> 
+  select(c("GEOID", "B19013e1", "B19013m1")) 
 
 # Extract census tract layer
 census <- st_read(here::here('data', 'ACS_2019_5YR_TRACT_48_TEXAS.gdb'),
-                  layer = 'ACS_2019_5YR_TRACT_48_TEXAS')
+                  layer = 'ACS_2019_5YR_TRACT_48_TEXAS', quiet = TRUE) |> 
+  select(-c("GEOID")) |> # Drop GEOID column
+  rename("GEOID" = "GEOID_Data") # Rename GEOID_Data for joining
 
 census_income <- left_join(x = census, y = income, by = "GEOID") |> 
-  st_transform(st_crs(houston_bbox)) |> 
-  st_crop(houston_bbox)
+  st_transform(st_crs(houston_bbox)) |> # FIXME, use 1 crs throughout qmd
+  st_crop(houston_bbox) |> 
+  filter(!ALAND == 0) |>  # Filter out ocean geometries
+  select(c("GEOID", "B19013e1", "B19013m1")) |> 
+  rename("median_hh_income_est" = "B19013e1",
+         "median_hh_income_moe" = "B19013m1")
 ```
 
 ```{r}
+# Filter to census tracts that lost power
+census_blackouts <- census_income |>
+  st_transform(st_crs(homes_blackout)) |> 
+  st_filter(y = homes_blackout, .predicate = st_contains) |> 
+  mutate(blackout = TRUE) # Add blackout column
+```
+
+```{r}
+# Plot blackout homes with census blackouts
 tm_shape(census_income) +
+  tm_polygons() +
+tm_shape(census_blackouts) +
+  tm_polygons(fill = 'orange') +
+tm_shape(homes_blackout) +
   tm_polygons()
+```
+
+```{r}
+# Rejoin to census_income & update blackouts column
+income_blackouts <- census_income |> 
+  left_join(census_blackouts |> 
+              st_drop_geometry() |> 
+              select(c("GEOID", "blackout")),
+            by = "GEOID") |> 
+  mutate(blackout = ifelse(is.na(blackout), FALSE, blackout))
+```
+
+
+```{r}
+# Median household income plot
+ggplot(income_blackouts, aes(blackout, median_hh_income_est)) +
+  geom_boxplot()
+```
+
+```{r}
+income_blackouts |> 
+  st_drop_geometry() |> 
+  group_by(blackout) |> 
+  summarise(tf_count = n())
+```
+
+```{r}
+# Summary statistics
+model <- lm(median_hh_income_est ~ blackout, data = income_blackouts)
+summary(model)
 ```
 
