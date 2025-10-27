@@ -31,7 +31,7 @@ lights_16_2 <- read_stars(here::here('data', 'VNP46A1', 'VNP46A1.A2021047.h08v06
 
 ```
 
-#1. Night Light Intensity Before & After Storm
+## 1.1 Night Light Intensity Before & After Storm
 
 ```{r}
 # Merge Feb 7th rasters
@@ -54,18 +54,32 @@ cropped_16 <- st_crop(lights_16, houston_bbox)
 ```{r fig.width=12, fig.height=5}
 # Plot before & after maps
 map_07 <- tm_shape(cropped_07) +
-  tm_raster(col.scale = tm_scale_continuous(values = '-brewer.greys')) + tm_legend(show = FALSE)
-            #col.legend = tm_legend(title = "Feb. 07, 2021 Light",
-                                   #orientation = 'landscape'))
+  tm_raster(col.scale = tm_scale_continuous(values = '-brewer.greys'),
+            col.legend = tm_legend(show = FALSE)) +
+tm_layout(title = "Houston lights before storm (Feb. 7th)",
+          title.position = c(0.01, 1),
+          title.color = "white")
 
 map_16 <- tm_shape(cropped_16) +
-  tm_raster(col.scale = tm_scale_continuous(values = '-brewer.greys')) + tm_legend(show = FALSE)
-            #col.legend = tm_legend(title = "Feb. 16, 2021 Light",
-                                   #orientation = 'landscape'))
+  tm_raster(col.scale = tm_scale_continuous(values = '-brewer.greys'),
+            col.legend = tm_legend(show = FALSE)) +
+tm_layout(title = "Houston lights after storm (Feb. 16th)",
+          title.position = c(0.01, 1),
+          title.color = "white") +
+tm_compass(position = c('left', 'bottom'),
+           size = 3,
+           text.size = 0.9,
+           color.dark = 'grey50',
+           text.color = 'white') +
+tm_scalebar(position = c('left', 'bottom'),
+            text.size = 0.8,
+            color.dark = 'grey50',
+            text.color = 'white')
 
 tmap_arrange(map_07, map_16, nrow = 1)
 ```
 
+## 1.2 Create blackout mask
 
 ```{r}
 # Get raster difference
@@ -76,8 +90,6 @@ lights_diff <- lights_16 - lights_07
 # Crop merged difference raster
 cropped_lights <- st_crop(lights_diff, houston_bbox)
 ```
-
-##1.1 Create blackout mask
 
 ```{r}
 # Create houston blackout mask
@@ -95,34 +107,17 @@ blackout_areas <- cropped_lights |>
 colnames(blackout_areas)[1] <- "light_difference"
 ```
 
-#2. Exclude highways from blackout mask
+## 2.1 Exclude highways from blackout mask
 
 ```{r}
 # Load roads data but only highways
-roads <- st_read(here::here('data', 'gis_osm_roads_free_1.gpkg'), query = "SELECT * FROM gis_osm_roads_free_1 WHERE fclass='motorway'") |> 
+roads <- st_read(here::here('data', 'gis_osm_roads_free_1.gpkg'), query = "SELECT * FROM gis_osm_roads_free_1 WHERE fclass='motorway'", quiet = TRUE) |> 
   st_transform("EPSG:3083")
-```
-
-```{r}
-# Initial plot
-tm_shape(blackout_areas) +
-  tm_polygons() +
-  tm_shape(roads) +
-  tm_lines()
 ```
 
 ```{r}
 # Create 200m buffer
 roads_buffer <- st_buffer(roads, dist = 200)
-```
-
-```{r}
-tmap_mode('plot')
-# Buffer plot
-tm_shape(blackout_areas) +
-  tm_borders(col = 'red') +
-  tm_shape(roads_buffer) +
-  tm_lines()
 ```
 
 ```{r}
@@ -132,15 +127,13 @@ roads_buffer_union <- st_union(roads_buffer)
 # Find areas NOT within buffer
 blackout_far_areas <- blackout_areas |> 
   st_filter(y = roads_buffer_union, .predicate = st_disjoint)
-```
 
-```{r}
-# Plot far areas
-tm_shape(blackout_far_areas) +
-  tm_borders(col = 'red') +
-  tm_shape(roads_buffer_union) +
-  tm_lines() +
-  tm_scalebar()
+# Confirm filter resulted in less rows
+if (nrow(blackout_areas) > nrow(blackout_far_areas)) {
+  print("Filter reduced rows.")
+} else {
+  warning("Filter did not reduce rows.")
+}
 ```
 
 ```{r}
@@ -151,11 +144,11 @@ smallest_distance <- round(as.numeric(min(distances)), 2)
 if (smallest_distance < 200) {
   warning("Nearest blackout area is within 200m of a highway. Redo filter.")
 } else {
-  paste0("Nearest blackout area is ", smallest_distance,"m away.")
+  paste0("Nearest blackout area is ", smallest_distance,"m away from a highway.")
 }
 ```
 
-#3. Identify homes impacted by blackout
+## 3.1 Identify homes impacted by blackouts
 ```{r}
 homes <- st_read(
   here::here("data", "gis_osm_buildings_a_free_1.gpkg"),
@@ -163,20 +156,64 @@ homes <- st_read(
     SELECT *
     FROM gis_osm_buildings_a_free_1
     WHERE (type IS NULL AND name IS NULL)
-       OR type IN ('residential', 'apartments', 'house', 'static_caravan', 'detached')") |> 
+       OR type IN ('residential', 'apartments', 'house', 'static_caravan', 'detached')", quiet = TRUE) |> 
   st_transform("EPSG:3083")
 ```
 
 ```{r}
-# Find houses in blackout areas
-houses_blackout <- homes |> 
+# Find homes in blackout areas
+homes_blackout <- homes |> 
   st_filter(y = blackout_far_areas, .predicate = st_overlaps)
 ```
 
-```{r}
+```{r fig.height=8, fig.width=9}
+
 tm_shape(blackout_far_areas) +
-  tm_borders(col = 'red') +
-tm_shape(houses_blackout) +
-  tm_polygons(fill = 'blue')
+  tm_polygons(col = 'red') +
+tm_shape(homes_blackout) +
+  tm_polygons(col = 'blue') +
+tm_add_legend(labels = c("Blackout Areas Excluding Highways", "Homes Within Blackout Areas"),
+              fill = c('red', 'blue'),
+              type = 'polygons',
+              position = c('left', 'top')) +
+tm_compass(position = c('right', 'bottom')) +
+tm_scalebar(position = c('right', 'bottom')) +
+tm_layout(bg.color = 'grey70')
+```
+
+```{r}
+# Table of homes that experienced blackouts
+homes_df <- homes_blackout |> 
+  group_by(type) |> 
+  summarise(count = n(),
+            percent = round((n() / nrow(homes_blackout)) * 100, digits = 2)) |> 
+  st_drop_geometry()
+
+kable(homes_df, 
+      col.names = c("Home Type", "Count", "Percentage (%)"))
+```
+
+## 4. Census Tract Distribution
+
+```{r}
+# View layers in gdb file
+st_layers(here::here('data', 'ACS_2019_5YR_TRACT_48_TEXAS.gdb'))
+
+# Extract income layer
+income <- st_read(here::here('data', 'ACS_2019_5YR_TRACT_48_TEXAS.gdb'),
+                  layer = 'X19_INCOME')
+
+# Extract census tract layer
+census <- st_read(here::here('data', 'ACS_2019_5YR_TRACT_48_TEXAS.gdb'),
+                  layer = 'ACS_2019_5YR_TRACT_48_TEXAS')
+
+census_income <- left_join(x = census, y = income, by = "GEOID") |> 
+  st_transform(st_crs(houston_bbox)) |> 
+  st_crop(houston_bbox)
+```
+
+```{r}
+tm_shape(census_income) +
+  tm_polygons()
 ```
 
