@@ -44,7 +44,7 @@ lights_16 <- st_mosaic(lights_16_1, lights_16_2)
 ```{r}
 # Create Houston bounding box
 houston_bbox <- st_bbox(c(xmin = -96.5,xmax = -94.5, ymin = 29, ymax = 30.5),
-                          crs = st_crs(lights_07))
+                          crs = "EPSG:4326")
 # Crop 07 raster
 cropped_07 <- st_crop(lights_07, houston_bbox)
 # Crop 16 raster
@@ -101,7 +101,7 @@ cropped_lights[cropped_lights > -200] <- NA
 blackout_areas <- cropped_lights |> 
   st_as_sf() |> 
   st_make_valid() |> 
-  st_transform("EPSG:3083")
+  st_transform("EPSG:3083") # Re-project to new crs
 
 # Rename first column name
 colnames(blackout_areas)[1] <- "light_difference"
@@ -153,8 +153,7 @@ if (smallest_distance < 200) {
 homes <- st_read(
   here::here("data", "gis_osm_buildings_a_free_1.gpkg"),
   query = "
-    SELECT *
-    FROM gis_osm_buildings_a_free_1
+    SELECT * FROM gis_osm_buildings_a_free_1
     WHERE (type IS NULL AND name IS NULL)
        OR type IN ('residential', 'apartments', 'house', 'static_caravan', 'detached')", quiet = TRUE) |> 
   st_transform("EPSG:3083")
@@ -208,10 +207,25 @@ income <- st_read(here::here('data', 'ACS_2019_5YR_TRACT_48_TEXAS.gdb'),
 census <- st_read(here::here('data', 'ACS_2019_5YR_TRACT_48_TEXAS.gdb'),
                   layer = 'ACS_2019_5YR_TRACT_48_TEXAS', quiet = TRUE) |> 
   select(-c("GEOID")) |> # Drop GEOID column
-  rename("GEOID" = "GEOID_Data") # Rename GEOID_Data for joining
+  rename("GEOID" = "GEOID_Data") |>  # Rename GEOID_Data for joining
+  st_transform("EPSG:3083")
+```
 
+```{r}
+# Find how many census tracts in houston bbox
+houston_tracts_number <- census |> 
+  st_crop(st_transform(houston_bbox, crs = "EPSG:3083")) |> 
+  nrow()
+
+houston_tracts_number
+```
+
+
+```{r}
+# Transform Houston bbox before joining
+houston_bbox <- st_transform(houston_bbox, crs = "EPSG:3083")
+# Join census & income data
 census_income <- left_join(x = census, y = income, by = "GEOID") |> 
-  st_transform(st_crs(houston_bbox)) |> # FIXME, use 1 crs throughout qmd
   st_crop(houston_bbox) |> 
   filter(!ALAND == 0) |>  # Filter out ocean geometries
   select(c("GEOID", "B19013e1", "B19013m1")) |> 
@@ -222,8 +236,7 @@ census_income <- left_join(x = census, y = income, by = "GEOID") |>
 ```{r}
 # Filter to census tracts that lost power
 census_blackouts <- census_income |>
-  st_transform(st_crs(homes_blackout)) |> 
-  st_filter(y = homes_blackout, .predicate = st_contains) |> 
+  st_filter(y = homes_blackout, .predicate = st_intersects) |> 
   mutate(blackout = TRUE) # Add blackout column
 ```
 
@@ -232,19 +245,18 @@ census_blackouts <- census_income |>
 tm_shape(census_income) +
   tm_polygons() +
 tm_shape(census_blackouts) +
-  tm_polygons(fill = 'orange') +
-tm_shape(homes_blackout) +
-  tm_polygons()
+  tm_polygons(fill = 'orange') 
 ```
 
 ```{r}
 # Rejoin to census_income & update blackouts column
+# FIXME
 income_blackouts <- census_income |> 
   left_join(census_blackouts |> 
               st_drop_geometry() |> 
               select(c("GEOID", "blackout")),
             by = "GEOID") |> 
-  mutate(blackout = ifelse(is.na(blackout), FALSE, blackout))
+  mutate(blackout = ifelse(test = is.na(blackout), yes = FALSE, no = blackout))
 ```
 
 
