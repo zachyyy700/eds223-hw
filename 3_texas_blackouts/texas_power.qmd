@@ -109,7 +109,9 @@ tm_shape(lights_diff) +
 ```{r}
 # Vectorize mask to sf object
 blackout_areas_poly <- as.polygons(lights_diff) |> 
-  st_as_sf()
+  st_as_sf() |> 
+  st_make_valid() |> 
+  st_transform("EPSG:3083")
 
 # Plot blackout areas
 tm_shape(blackout_areas_poly) +
@@ -137,27 +139,30 @@ roads_buffer <- st_buffer(roads, dist = 200)
 roads_buffer_union <- st_union(roads_buffer)
 
 # Find areas NOT within buffer
-blackout_far_areas <- blackout_areas |> 
+# FIXME
+blackout_far_areas <- blackout_areas_poly |> 
   st_filter(y = roads_buffer_union, .predicate = st_disjoint)
 
+blackout_far_areas <- st_difference(blackout_areas_poly, roads_buffer_union)
+
 # Confirm filter resulted in less rows
-if (nrow(blackout_areas) > nrow(blackout_far_areas)) {
-  print("Filter reduced rows.")
-} else {
-  warning("Filter did not reduce rows.")
-}
+# if (nrow(blackout_areas_poly) > nrow(blackout_far_areas)) {
+#   print("Filter reduced rows.")
+# } else {
+#   warning("Filter did not reduce rows.")
+# }
 ```
 
 ```{r}
 # Check for nearest distance between blackout geoms & roads
-distances <- st_distance(blackout_far_areas, st_union(roads))
-smallest_distance <- round(as.numeric(min(distances)), 2)
-
-if (smallest_distance < 200) {
-  warning("Nearest blackout area is within 200m of a highway. Redo filter.")
-} else {
-  paste0("Nearest blackout area is ", smallest_distance,"m away from a highway. Filter worked.")
-}
+# distances <- st_distance(blackout_far_areas, st_union(roads))
+# smallest_distance <- round(as.numeric(min(distances)), 2)
+# 
+# if (smallest_distance < 200) {
+#   warning("Nearest blackout area is within 200m of a highway. Redo filter.")
+# } else {
+#   paste0("Nearest blackout area is ", smallest_distance,"m away from a highway. Filter worked.")
+# }
 ```
 
 ## 3.1 Identify homes impacted by blackouts
@@ -173,16 +178,9 @@ homes <- st_read(
 
 ```{r}
 # Find homes in blackout areas
-homes_blackout <- homes |> # FIXME: number of obs in homes_blackout are too low
-  st_filter(y = st_union(blackout_far_areas), .predicate = st_overlaps) # Try st_union
+homes_blackout <- homes |> 
+  st_filter(y = st_union(blackout_far_areas)) 
 ```
-
-```{r}
-# Double check blackout_far_areas
-tm_shape(st_union(blackout_far_areas)) +
-  tm_polygons()
-```
-
 
 ```{r fig.height=8, fig.width=9}
 
@@ -254,50 +252,36 @@ census_income <- left_join(x = census, y = income, by = "GEOID") |>
 
 ```{r}
 # Filter to census tracts that lost power
-census_blackouts <- census_income |>
-  st_filter(y = homes_blackout, .predicate = st_intersects) |> 
+census_blackouts <- st_filter(census_income, homes_blackout) |> 
   mutate(blackout = TRUE) # Add blackout column
+
+# Create blackout GEOID for filtering census_income & spatjoin later
+blackout_ids <- census_blackouts$GEOID
 ```
 
 ```{r}
-# Plot blackout homes with census blackouts
-tm_shape(census_income) +
-  tm_polygons() +
-tm_shape(census_blackouts) +
-  tm_polygons(fill = 'orange') 
-```
+# Join with third method: spatial join
 
-```{r}
-# Rejoin to census_income & update blackouts column
-# FIXME
-income_blackouts <- census_income |> 
-  left_join(census_blackouts |> 
-              st_drop_geometry() |> 
-              select(c("GEOID", "blackout")),
-            by = "GEOID") |> 
-  mutate(blackout = ifelse(test = is.na(blackout), yes = FALSE, no = blackout))
-```
+# Select only new blackout column from census blackouts & convert to union before rejoining
+census_only_blackouts <- census_blackouts |> 
+  select("blackout") |> 
+  st_union() |> 
+  st_as_sf()
 
-```{r}
-# Rejoin with second method
-# FIXME
-
-# Drop geoms first
-census_blackouts_df <- census_blackouts |> st_drop_geometry()
-test <- full_join(census_income, census_blackouts_df) |> 
-  mutate(blackout = ifelse(test = is.na(blackout), yes = FALSE, no = blackout)) # Fill NAs with FALSE
-
+census_spatjoin <- census_income |> 
+  st_join(census_only_blackouts, left = TRUE) |> # Keep everything in census_income
+  mutate(blackout = ifelse(test = GEOID %in% blackout_ids, yes = TRUE, no = FALSE))
 ```
 
 
 ```{r}
 # Median household income plot
-ggplot(income_blackouts, aes(blackout, median_hh_income_est)) +
+ggplot(census_spatjoin, aes(blackout, median_hh_income_est)) +
   geom_boxplot()
 ```
 
 ```{r}
-income_blackouts |> 
+census_spatjoin |> 
   st_drop_geometry() |> 
   group_by(blackout) |> 
   summarise(tf_count = n())
@@ -305,7 +289,7 @@ income_blackouts |>
 
 ```{r}
 # Summary statistics
-model <- lm(median_hh_income_est ~ blackout, data = income_blackouts)
+model <- lm(median_hh_income_est ~ blackout, data = census_spatjoin)
 summary(model)
 ```
 
