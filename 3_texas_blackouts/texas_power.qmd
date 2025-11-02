@@ -59,14 +59,14 @@ map_07 <- tm_shape(cropped_07) +
   tm_raster(col.scale = tm_scale_continuous(values = '-brewer.greys'),
             col.legend = tm_legend(show = FALSE)) +
 tm_layout(title = "Houston lights before storm (Feb. 7th)",
-          title.position = c(0.01, 1),
+          title.position = c(0.03, 1),
           title.color = "white")
 
 map_16 <- tm_shape(cropped_16) +
   tm_raster(col.scale = tm_scale_continuous(values = '-brewer.greys'),
             col.legend = tm_legend(show = FALSE)) +
 tm_layout(title = "Houston lights after storm (Feb. 16th)",
-          title.position = c(0.01, 1),
+          title.position = c(0.03, 1),
           title.color = "white") +
 tm_compass(position = c('left', 'bottom'),
            size = 3,
@@ -105,7 +105,7 @@ colnames(blackout_areas)[1] <- "light_difference"
 ```
 
 
-## 2.1 Exclude highways from blackout mask
+## 2. Exclude highways from blackout mask
 
 ```{r}
 # Load roads data but only highways
@@ -123,12 +123,11 @@ roads_buffer <- st_buffer(roads, dist = 200)
 roads_buffer_union <- st_union(roads_buffer)
 
 # Find areas NOT within buffer
-# FIXME
 blackout_far_areas <- st_difference(blackout_areas, roads_buffer_union)
 
 ```
 
-## 3.1 Identify homes impacted by blackouts
+## 3. Identify homes impacted by blackouts
 ```{r}
 homes <- st_read(
   here::here("data", "gis_osm_buildings_a_free_1.gpkg"),
@@ -148,15 +147,17 @@ homes_blackout <- homes |>
 
 ```
 
-```{r fig.height=8, fig.width=9}
+```{r fig.height=6, fig.width=7}
 #| label: fig-blackout-homes
+#| fig-cap: "Map of Homes That Lost Power"
 
 tm_shape(blackout_far_areas) +
   tm_polygons(col = 'red') +
   
 tm_shape(homes_blackout) +
   tm_polygons(col = 'blue') +
-tm_add_legend(labels = c("Blackout Areas Excluding Highways", "Homes Within Blackout Areas"),
+
+tm_add_legend(labels = c("Blackout Areas, Excluding Highways", "Homes That Lost Power"),
               fill = c('red', 'blue'),
               type = 'polygons',
               position = c('left', 'top')) +
@@ -176,22 +177,30 @@ homes_df <- homes_blackout |>
 
 # Add total row
 homes_df <- homes_df |> 
-  add_row(type = 'Total', count = sum(homes_df$count), percent = NA) 
+  add_row(type = 'Total', count = sum(homes_df$count)) 
+
+# Change type NA to character string
+homes_df$type[6] <- "NA"
 
 ```
 
 ```{r}
 #| label: tbl-homes
+#| tbl-cap: "Homes That Experienced Blackouts by Home Type"
 
+# Display kable table
+options(knitr.kable.NA = "")
 kable(homes_df, 
-      col.names = c("Home Type", "Count", "Percentage (%)"))
+      col.names = c("Home Type", "Count", "Percentage (%)"), align = 'c')
+
+
 ```
 
 ## 4. Census Tract Distribution
 
 ```{r}
 # View layers in gdb file
-st_layers(here::here('data', 'ACS_2019_5YR_TRACT_48_TEXAS.gdb'))
+#st_layers(here::here('data', 'ACS_2019_5YR_TRACT_48_TEXAS.gdb'))
 
 # Extract income layer
 income <- st_read(here::here('data', 'ACS_2019_5YR_TRACT_48_TEXAS.gdb'),
@@ -212,7 +221,7 @@ houston_tracts_number <- census |>
   st_crop(st_transform(houston_bbox, crs = "EPSG:3083")) |> 
   nrow()
 
-houston_tracts_number
+paste0("Number of Houston census tracts: ", houston_tracts_number) 
 ```
 
 
@@ -235,20 +244,26 @@ census_blackouts <- census_income |>
   st_filter(y = blackout_far_areas, .predicate = st_intersects) |> 
   mutate(blackout = TRUE) # Add blackout column
 
-# Create blackout GEOID for filtering census_income & spatjoin later
+# Create blackout GEOID for filtering census_income & joining later
 blackout_ids <- census_blackouts$GEOID
 ```
 
 ```{r}
 #| label: fig-census-blackouts
+#| fig-cap: "Houston Census Tracts That Lost Power"
 
 # Plot blackout areas with census blackouts
 tm_shape(census_income) + # Census layer
   tm_polygons() +
 tm_shape(census_blackouts) + # Census blackout layer
   tm_polygons(fill = 'orange') +
-tm_shape(blackout_far_areas) + # Blackout far areas
-  tm_polygons(fill = 'blue')
+  
+tm_compass(position = c(0.92, 0.32)) +
+tm_scalebar(position = c(0.76, 0.18)) +
+tm_add_legend(labels = c("Tracts That Lost Power"),
+              fill = c('orange'),
+              type = 'polygons',
+              position = c('right', 'bottom')) 
 ```
 
 ```{r}
@@ -260,19 +275,18 @@ census_blackout_tf <- census_income |>
 
 ```{r}
 #| label: fig-income
+#| fig-cap: "Distribution of Median Household Income for Census Tracts per Blackout Group"
 
 # Median household income plot
 ggplot(census_blackout_tf, aes(blackout, median_hh_income_est)) +
   geom_boxplot() +
+  
+  scale_x_discrete(labels = c('No Blackout', 'Blackout')) +
+  labs(y = "Median Household Income (Estimate) in Census Tract") +
+  
   theme_classic() +
-  theme(panel.grid.major.y = element_line(color = 'grey')) 
-```
-
-
-```{r}
-# Summary statistics
-model <- lm(median_hh_income_est ~ blackout, data = census_blackout_tf)
-summary(model)
+  theme(panel.grid.major.y = element_line(color = 'grey'),
+        axis.title.x = element_blank()) 
 ```
 
 The boxplots in @fig-income don't give expected results. 
@@ -282,6 +296,6 @@ The boxplots in @fig-income don't give expected results.
 table(census_blackout_tf$blackout)
 ```
 
-There are twice more blackout census tracts than non-blackout. Census tracts with blackouts could be biasing the data. 
+There are about 9 times more blackout census tracts than non-blackout. Census tracts with blackouts could be biasing the data. 
 
 
