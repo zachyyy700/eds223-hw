@@ -19,7 +19,7 @@ This folder contains the contents for homework 3. This homework's main goal is t
 
 ### Data
 
--   Night lights: The Visible Infrared Imaging Radiometer Suite (VIIRS) data is from NASA's Level-1 and Atmospheric Archive & Distribution System Distributed Active Archive Center (LAADS DAAC). The .tif files were downloaded and prepared by the instructors. [LAADS DAAC Website](https://ladsweb.modaps.eosdis.nasa.gov/)
+-   Night lights: Data used is from February 7th & 16th, 2021, showing the before and after of the February 2021 Texas winter storm. The Visible Infrared Imaging Radiometer Suite (VIIRS) data is from NASA's Level-1 and Atmospheric Archive & Distribution System Distributed Active Archive Center (LAADS DAAC). The .tif files were downloaded and prepared by the instructors. [LAADS DAAC Website](https://ladsweb.modaps.eosdis.nasa.gov/)
 
 -   Roads: From Geofabrik downloads site where OpenStreetMap (OSM) data can be extracted. [Geofabrik Website](https://download.geofabrik.de/)
 
