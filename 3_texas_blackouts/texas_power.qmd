@@ -104,6 +104,7 @@ blackout_areas <- lights_diff |>
 colnames(blackout_areas)[1] <- "light_difference"
 ```
 
+
 ## 2.1 Exclude highways from blackout mask
 
 ```{r}
@@ -195,18 +196,13 @@ st_layers(here::here('data', 'ACS_2019_5YR_TRACT_48_TEXAS.gdb'))
 # Extract income layer
 income <- st_read(here::here('data', 'ACS_2019_5YR_TRACT_48_TEXAS.gdb'),
                   layer = 'X19_INCOME', quiet = TRUE) |> 
-  select(c("GEOID", "B19013e1", "B19013m1"))
-
-# # Extract house layer
-# house_count <- st_read(here::here('data', 'ACS_2019_5YR_TRACT_48_TEXAS.gdb'),
-#                   layer = 'X11_HOUSEHOLD_FAMILY_SUBFAMILIES', quiet = TRUE) |> 
-#   select(c("GEOID", "B11001e1"))
+  dplyr::select(c(GEOID, B19013e1, B19013m1))
 
 # Extract census tract layer
 census <- st_read(here::here('data', 'ACS_2019_5YR_TRACT_48_TEXAS.gdb'),
                   layer = 'ACS_2019_5YR_TRACT_48_TEXAS', quiet = TRUE) |> 
-  select(-c("GEOID")) |> # Drop GEOID column
-  rename("GEOID" = "GEOID_Data") |>  # Rename GEOID_Data for joining
+  dplyr::select(-c(GEOID)) |> # Drop GEOID column
+  rename(GEOID = GEOID_Data) |>  # Rename GEOID_Data for joining
   st_transform("EPSG:3083")
 ```
 
@@ -223,19 +219,20 @@ houston_tracts_number
 ```{r}
 # Transform Houston bbox before joining
 houston_bbox <- st_transform(houston_bbox, crs = "EPSG:3083")
+
 # Join census & income data
 census_income <- left_join(x = census, y = income, by = "GEOID") |> 
   st_crop(houston_bbox) |> 
-  filter(!ALAND == 0) |>  # Filter out ocean geometries
-  select(c("GEOID", "B19013e1", "B19013m1")) |> 
-  rename("median_hh_income_est" = "B19013e1",
-         "median_hh_income_moe" = "B19013m1")
+  filter(ALAND != 0) |>  # Filter out ocean geometries
+  dplyr::select(c("GEOID", "B19013e1", "B19013m1")) |> 
+  rename(median_hh_income_est = B19013e1,
+         median_hh_income_moe = B19013m1)
 ```
 
 ```{r}
 # Filter to census tracts that lost power
 census_blackouts <- census_income |>
-  st_filter(y = homes_blackout, .predicate = st_intersects) |> 
+  st_filter(y = blackout_far_areas, .predicate = st_intersects) |> 
   mutate(blackout = TRUE) # Add blackout column
 
 # Create blackout GEOID for filtering census_income & spatjoin later
@@ -245,69 +242,46 @@ blackout_ids <- census_blackouts$GEOID
 ```{r}
 #| label: fig-census-blackouts
 
-# Plot blackout homes with census blackouts
-tm_shape(census_income) +
+# Plot blackout areas with census blackouts
+tm_shape(census_income) + # Census layer
   tm_polygons() +
-tm_shape(census_blackouts) +
-  tm_polygons(fill = 'orange') 
+tm_shape(census_blackouts) + # Census blackout layer
+  tm_polygons(fill = 'orange') +
+tm_shape(blackout_far_areas) + # Blackout far areas
+  tm_polygons(fill = 'blue')
 ```
 
 ```{r}
-# Select only new blackout column from census blackouts & convert to union before rejoining
-census_only_blackouts <- census_blackouts |> 
-  select("blackout") |> 
-  st_union() |> 
-  st_as_sf()
-
-# Spatially join census_income data with only tracts that experienced blackouts
-census_spatjoin <- census_income |> 
-  st_join(census_only_blackouts, left = TRUE) |> # Keep everything in census_income
-  mutate(blackout = ifelse(test = GEOID %in% blackout_ids, yes = TRUE, no = FALSE))
+# Create boolean column whether tract had a blackout or not
+census_blackout_tf <- census_income |> 
+  mutate(blackout = GEOID %in% blackout_ids)
 ```
 
 
 ```{r}
-#|label: fig-income
+#| label: fig-income
 
 # Median household income plot
-ggplot(census_spatjoin, aes(blackout, median_hh_income_est)) +
-  geom_boxplot()
+ggplot(census_blackout_tf, aes(blackout, median_hh_income_est)) +
+  geom_boxplot() +
+  theme_classic() +
+  theme(panel.grid.major.y = element_line(color = 'grey')) 
 ```
 
 
 ```{r}
 # Summary statistics
-model <- lm(median_hh_income_est ~ blackout, data = census_spatjoin)
+model <- lm(median_hh_income_est ~ blackout, data = census_blackout_tf)
 summary(model)
 ```
 
-The boxplots in @fig-income don't give expected results. Will try to weigh the median_income column in the census data by number of households.
+The boxplots in @fig-income don't give expected results. 
 
 ```{r}
 # Get value counts for blackout column
-table(census_spatjoin$blackout)
+table(census_blackout_tf$blackout)
 ```
 
-There are twice more blackout census tracts than non-blackout. Census tracts with blackouts seem to be biasing the data. 
+There are twice more blackout census tracts than non-blackout. Census tracts with blackouts could be biasing the data. 
 
-```{r}
-# Keep only homes within Houston tracts
-homes_houston <- st_join(homes, census_income, join = st_within)
-
-# Find number of homes in census tracts
-homes_in_tracts <- homes_houston |> 
-  st_drop_geometry() |> 
-  group_by(GEOID) |> 
-  summarise(home_count = n())
-```
-
-```{r}
-# Join with Houston census blackout dataframe
-census_houses <- left_join(census_spatjoin, homes_in_tracts, by = "GEOID")
-```
-
-```{r}
-ggplot(census_houses, aes(blackout, median_hh_income_est, weight = home_count)) +
-  geom_boxplot()
-```
 
