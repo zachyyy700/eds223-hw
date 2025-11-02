@@ -52,6 +52,8 @@ cropped_16 <- st_crop(lights_16, houston_bbox)
 ```
 
 ```{r fig.width=12, fig.height=5}
+#| label: fig-beforeafter
+
 # Plot before & after maps
 map_07 <- tm_shape(cropped_07) +
   tm_raster(col.scale = tm_scale_continuous(values = '-brewer.greys'),
@@ -83,22 +85,17 @@ tmap_arrange(map_07, map_16, nrow = 1)
 
 ```{r}
 # Get raster difference
-lights_diff <- lights_16 - lights_07
-```
-
-```{r}
-# Crop merged difference raster
-cropped_lights <- st_crop(lights_diff, houston_bbox)
+lights_diff <- cropped_16 - cropped_07
 ```
 
 ```{r}
 # Create houston blackout mask
-cropped_lights[cropped_lights > -200] <- NA
+lights_diff[lights_diff > -200] <- NA
 ```
 
 ```{r}
 # Vectorize mask
-blackout_areas <- cropped_lights |> 
+blackout_areas <- lights_diff |> 
   st_as_sf() |> 
   st_make_valid() |> 
   st_transform("EPSG:3083") # Re-project to new crs
@@ -125,27 +122,9 @@ roads_buffer <- st_buffer(roads, dist = 200)
 roads_buffer_union <- st_union(roads_buffer)
 
 # Find areas NOT within buffer
-blackout_far_areas <- blackout_areas |> 
-  st_filter(y = roads_buffer_union, .predicate = st_disjoint)
+# FIXME
+blackout_far_areas <- st_difference(blackout_areas, roads_buffer_union)
 
-# Confirm filter resulted in less rows
-if (nrow(blackout_areas) > nrow(blackout_far_areas)) {
-  print("Filter reduced rows.")
-} else {
-  warning("Filter did not reduce rows.")
-}
-```
-
-```{r}
-# Check for nearest distance between blackout geoms & roads
-distances <- st_distance(blackout_far_areas, st_union(roads))
-smallest_distance <- round(as.numeric(min(distances)), 2)
-
-if (smallest_distance < 200) {
-  warning("Nearest blackout area is within 200m of a highway. Redo filter.")
-} else {
-  paste0("Nearest blackout area is ", smallest_distance,"m away from a highway. Filter worked.")
-}
 ```
 
 ## 3.1 Identify homes impacted by blackouts
@@ -160,24 +139,30 @@ homes <- st_read(
 ```
 
 ```{r}
+#| label: blackout-homes-filter
+
 # Find homes in blackout areas
 homes_blackout <- homes |> 
-  st_filter(y = blackout_far_areas, .predicate = st_overlaps)
+  st_filter(y = st_union(blackout_far_areas))
+
 ```
 
 ```{r fig.height=8, fig.width=9}
+#| label: fig-blackout-homes
 
 tm_shape(blackout_far_areas) +
   tm_polygons(col = 'red') +
+  
 tm_shape(homes_blackout) +
   tm_polygons(col = 'blue') +
 tm_add_legend(labels = c("Blackout Areas Excluding Highways", "Homes Within Blackout Areas"),
               fill = c('red', 'blue'),
               type = 'polygons',
               position = c('left', 'top')) +
+
 tm_compass(position = c('right', 'bottom')) +
 tm_scalebar(position = c('right', 'bottom')) +
-tm_layout(bg.color = 'grey70')
+tm_layout(bg.color = 'grey90')
 ```
 
 ```{r}
@@ -185,8 +170,17 @@ tm_layout(bg.color = 'grey70')
 homes_df <- homes_blackout |> 
   group_by(type) |> 
   summarise(count = n(),
-            percent = round((n() / nrow(homes_blackout)) * 100, digits = 2)) |> 
+            percent = round((n() / nrow(homes_blackout)) * 100, digits = 2)) |>
   st_drop_geometry()
+
+# Add total row
+homes_df <- homes_df |> 
+  add_row(type = 'Total', count = sum(homes_df$count), percent = NA) 
+
+```
+
+```{r}
+#| label: tbl-homes
 
 kable(homes_df, 
       col.names = c("Home Type", "Count", "Percentage (%)"))
@@ -201,7 +195,12 @@ st_layers(here::here('data', 'ACS_2019_5YR_TRACT_48_TEXAS.gdb'))
 # Extract income layer
 income <- st_read(here::here('data', 'ACS_2019_5YR_TRACT_48_TEXAS.gdb'),
                   layer = 'X19_INCOME', quiet = TRUE) |> 
-  select(c("GEOID", "B19013e1", "B19013m1")) 
+  select(c("GEOID", "B19013e1", "B19013m1"))
+
+# # Extract house layer
+# house_count <- st_read(here::here('data', 'ACS_2019_5YR_TRACT_48_TEXAS.gdb'),
+#                   layer = 'X11_HOUSEHOLD_FAMILY_SUBFAMILIES', quiet = TRUE) |> 
+#   select(c("GEOID", "B11001e1"))
 
 # Extract census tract layer
 census <- st_read(here::here('data', 'ACS_2019_5YR_TRACT_48_TEXAS.gdb'),
@@ -238,9 +237,14 @@ census_income <- left_join(x = census, y = income, by = "GEOID") |>
 census_blackouts <- census_income |>
   st_filter(y = homes_blackout, .predicate = st_intersects) |> 
   mutate(blackout = TRUE) # Add blackout column
+
+# Create blackout GEOID for filtering census_income & spatjoin later
+blackout_ids <- census_blackouts$GEOID
 ```
 
 ```{r}
+#| label: fig-census-blackouts
+
 # Plot blackout homes with census blackouts
 tm_shape(census_income) +
   tm_polygons() +
@@ -249,33 +253,61 @@ tm_shape(census_blackouts) +
 ```
 
 ```{r}
-# Rejoin to census_income & update blackouts column
-# FIXME
-income_blackouts <- census_income |> 
-  left_join(census_blackouts |> 
-              st_drop_geometry() |> 
-              select(c("GEOID", "blackout")),
-            by = "GEOID") |> 
-  mutate(blackout = ifelse(test = is.na(blackout), yes = FALSE, no = blackout))
+# Select only new blackout column from census blackouts & convert to union before rejoining
+census_only_blackouts <- census_blackouts |> 
+  select("blackout") |> 
+  st_union() |> 
+  st_as_sf()
+
+# Spatially join census_income data with only tracts that experienced blackouts
+census_spatjoin <- census_income |> 
+  st_join(census_only_blackouts, left = TRUE) |> # Keep everything in census_income
+  mutate(blackout = ifelse(test = GEOID %in% blackout_ids, yes = TRUE, no = FALSE))
 ```
 
 
 ```{r}
+#|label: fig-income
+
 # Median household income plot
-ggplot(income_blackouts, aes(blackout, median_hh_income_est)) +
+ggplot(census_spatjoin, aes(blackout, median_hh_income_est)) +
   geom_boxplot()
 ```
 
-```{r}
-income_blackouts |> 
-  st_drop_geometry() |> 
-  group_by(blackout) |> 
-  summarise(tf_count = n())
-```
 
 ```{r}
 # Summary statistics
-model <- lm(median_hh_income_est ~ blackout, data = income_blackouts)
+model <- lm(median_hh_income_est ~ blackout, data = census_spatjoin)
 summary(model)
+```
+
+The boxplots in @fig-income don't give expected results. Will try to weigh the median_income column in the census data by number of households.
+
+```{r}
+# Get value counts for blackout column
+table(census_spatjoin$blackout)
+```
+
+There are twice more blackout census tracts than non-blackout. Census tracts with blackouts seem to be biasing the data. 
+
+```{r}
+# Keep only homes within Houston tracts
+homes_houston <- st_join(homes, census_income, join = st_within)
+
+# Find number of homes in census tracts
+homes_in_tracts <- homes_houston |> 
+  st_drop_geometry() |> 
+  group_by(GEOID) |> 
+  summarise(home_count = n())
+```
+
+```{r}
+# Join with Houston census blackout dataframe
+census_houses <- left_join(census_spatjoin, homes_in_tracts, by = "GEOID")
+```
+
+```{r}
+ggplot(census_houses, aes(blackout, median_hh_income_est, weight = home_count)) +
+  geom_boxplot()
 ```
 
