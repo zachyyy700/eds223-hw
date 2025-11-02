@@ -19,6 +19,14 @@ This folder contains the contents for homework 3. This homework's main goal is t
 
 ### Data
 
+-   Night lights: The Visible Infrared Imaging Radiometer Suite (VIIRS) data is from NASA's Level-1 and Atmospheric Archive & Distribution System Distributed Active Archive Center (LAADS DAAC). The .tif files were downloaded and prepared by the instructors. [LAADS DAAC Website](https://ladsweb.modaps.eosdis.nasa.gov/)
+
+-   Roads: From Geofabrik downloads site where OpenStreetMap (OSM) data can be extracted. [Geofabrik Website](https://download.geofabrik.de/)
+
+- Buildings: Also from [Geofabrik](https://download.geofabrik.de/), data contained are houses in the Houston area.
+
+- Socioeconomic: Obtained from the U.S. Census Bureau's American Community Survey for census tracts in 2019. Used for combining census attribute data to OSM geospatial data.
+
 ### References
 
 ### Author
