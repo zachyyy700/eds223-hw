@@ -17,6 +17,7 @@ library(tidyverse)
 library(tmap)
 library(kableExtra)
 library(stars)
+library(maptiles)
 ```
 
 ```{r}
@@ -63,6 +64,7 @@ cropped_16 <- st_crop(lights_16, houston_bbox)
 
 ```{r fig.width=12, fig.height=5}
 #| label: fig-beforeafter
+#| fig-cap: "Comparison of Houston Lights Before & After the February 2021 Severe Winter Storm."
 
 # Plot before & after maps
 map_07 <- tm_shape(cropped_07) +
@@ -147,6 +149,7 @@ blackout_far_areas <- st_difference(blackout_areas, roads_buffer_union)
 ```
 
 ## 3. Identify homes impacted by blackouts
+
 ```{r}
 homes <- st_read(
   here::here("data", "gis_osm_buildings_a_free_1.gpkg"),
@@ -175,21 +178,24 @@ homes_blackout <- homes |>
 
 ```{r fig.height=6, fig.width=7}
 #| label: fig-blackout-homes
-#| fig-cap: "Map of Homes That Lost Power"
+#| fig-cap: "Map of Homes That Lost Power."
 
 tm_shape(blackout_far_areas) +
-  tm_polygons(col = 'red') +
+  tm_polygons(col = 'grey20', col_alpha = 0.5) +
+  tm_basemap('CartoDB.VoyagerNoLabels') +
+  tm_graticules(x = seq(-96.4, -94.8, 0.4),
+                #y = seq(29.0, 30.4, 0.2),
+                alpha = 0.2) +
   
 tm_shape(homes_blackout) +
   tm_polygons(col = 'blue') +
 
 tm_add_legend(labels = c("Blackout Areas, Excluding Highways", "Homes That Lost Power"),
-              fill = c('red', 'blue'),
+              fill = c('grey20', 'blue'),
               type = 'polygons',
               position = c('left', 'top')) +
 
-tm_compass(position = c('right', 'bottom')) +
-tm_scalebar(position = c('right', 'bottom')) +
+
 tm_layout(bg.color = 'grey90')
 ```
 
@@ -280,11 +286,14 @@ census_blackouts <- census_income |>
 
 # Create blackout GEOID for filtering census_income & joining later
 blackout_ids <- census_blackouts$GEOID
+
+# Print number of census tracts that experienced blackouts
+paste0("Number of Houston census tracts that experienced blackouts: ", nrow(census_blackouts))
 ```
 
 ```{r}
 #| label: fig-census-blackouts
-#| fig-cap: "Houston Census Tracts That Lost Power"
+#| fig-cap: "Houston Census Tracts That Lost Power."
 
 # Plot blackout areas with census blackouts
 tm_shape(census_income) + # Census layer
@@ -309,7 +318,7 @@ census_blackout_tf <- census_income |>
 
 ```{r}
 #| label: fig-income
-#| fig-cap: "Distribution of Median Household Income for Census Tracts per Blackout Group"
+#| fig-cap: "Distribution of Median Household Income for Census Tracts per Blackout Group."
 
 # Median household income plot
 ggplot(census_blackout_tf, aes(blackout, median_hh_income_est)) +
