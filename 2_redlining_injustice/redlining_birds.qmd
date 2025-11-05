@@ -56,6 +56,8 @@ colors <- c("#90be6d", "#277da1", "#f9c74f", "#f94144")
 ```
 
 ```{r fig.width=9, fig.height=8}
+#| label: fig-grades-la
+#| fig-cap: "HOLC Grades Across LA County. HOLC ranking: A (green), B (blue), C (yellow), D (red)."
 # Plot distribution of HOLC grades across LA county
 tm_shape(la_county, bbox = st_bbox(holc)) +
   tm_fill(fill = "grey40", col = "grey40") +
@@ -63,7 +65,6 @@ tm_shape(holc) +
   tm_fill(fill = 'grade',
           fill.scale = tm_scale(values = colors),
           fill.legend = tm_legend(title = "Grade", position = c("top", "right"), height = 11, width = 6)) +
-tm_title(text = "HOLC Grades Across LA County") +
 tm_compass(type = "4star", position = c("bottom", "right"), size = 5) +
 tm_scalebar(position = c("bottom", "right"), text.size = 0.9) +
 tm_layout(bg.color = "#78d5d7")
@@ -103,6 +104,8 @@ ej_conditions_df <- combined_la_holc |>
 ```
 
 ```{r fig.height=7}
+#| label: fig-metrics
+#| fig-cap: "EJScreen Metrics - Comparisons by HOLC Grade. HOLC ranking: A (green), B (blue), C (yellow), D (red)."
 # Create low-income percentage plot
 lowinc <- ej_conditions_df |> 
   ggplot(aes(x = grade, y = lowincpct_mean, fill = grade)) +
@@ -131,7 +134,7 @@ life_ex <- ej_conditions_df |>
        tag = "C")
 
 # Patchwork together
-lowinc / (pm25 + life_ex)  + plot_annotation(title = "Figure 1.3.1. EJScreen Metrics - Comparisons by HOLC Grade") & theme_light()
+lowinc / (pm25 + life_ex) & theme_light()
 ```
 
 
@@ -146,6 +149,8 @@ class(la_holc_geoms)
 ```
 
 ```{r fig.height=11, fig.width=12}
+#| label: fig-maps
+#| fig-cap: "EJScreen Metrics - Spatial Comparison."
 # Grades map
 grades_map <- tm_shape(la_county, bbox = st_bbox(holc)) +
   tm_fill(fill = "grey40", col = "grey40") +
@@ -158,8 +163,7 @@ tm_shape(holc) +
                                   height = 12)) +
   tm_layout(legend.position = c("right", "bottom")) +
   tm_compass(position = c("right", "top")) +
-  tm_scalebar(position = c(0.6, 0.95), text.size = 0.75) +
-  tm_title(text = "Figure 1.3.2. EJScreen Metrics - Spatial Comparison")
+  tm_scalebar(position = c(0.6, 0.95), text.size = 0.75) 
 
 # Percent low income map
 lowinc_map <- tm_shape(la_county, bbox = st_bbox(holc)) +
@@ -171,9 +175,7 @@ tm_shape(la_holc_geoms) +
                                   reverse = TRUE,
                                   labels = c("100%", "80%", "60%", "40%", "20%", "0%"),
                                   height = 16)) +
-  tm_layout(legend.position = c("right", "bottom"),
-            inner.margins = c(0.05, 0, 0, 0)) +
-  tm_title(text = " ")
+  tm_layout(legend.position = c("right", "bottom"))
 
 # Percentile PM2.5 map
 pm25_map <- tm_shape(la_county, bbox = st_bbox(holc)) +
@@ -204,7 +206,7 @@ tmap_arrange(grades_map, lowinc_map, pm25_map, life_ex_map, nrow = 2)
 
 ## 1.4 Summary
 
-Comparing the means of all three variables of interest (Figure 1.3.1): 1. percent low income (A) 2. PM2.5 percentile (B) 3. low life expectancy percentile (C), shows a clear relationship with HOLC grade. Grade A has the lowest mean for all three variables. On the other hand, Grade D has the highest means, with a sequential increase by grade in-between Grades A-D. The four maps (Figure 1.3.2), compare the same three variables and show the spatial distribution across LA. Neighborhoods with worse HOLC grades tend to have higher percentage of low income populations. Additionally, these neighborhoods have higher percentiles for PM2.5 and low life expectancy, indicating worse air quality and shorter life expectancy compared to the rest of California State. These relationships show that historically redlined neighborhoods face greater environmental burdens and disproportionate health disparities compared to locations with a higher HOLC grade. 
+Comparing the means of all three variables of interest (@fig-metrics): 1. percent low income (A) 2. PM2.5 percentile (B) 3. low life expectancy percentile (C), shows a clear relationship with HOLC grade. Grade A has the lowest mean for all three variables. On the other hand, Grade D has the highest means, with a sequential increase by grade in-between Grades A-D. The four maps (@fig-maps), compare the same three variables and show the spatial distribution across LA. Neighborhoods with worse HOLC grades tend to have higher percentage of low income populations. Additionally, these neighborhoods have higher percentiles for PM2.5 and low life expectancy, indicating worse air quality and shorter life expectancy compared to the rest of California State. These relationships show that historically redlined neighborhoods face greater environmental burdens and disproportionate health disparities compared to locations with a higher HOLC grade. 
 
 # Part 2: Redlining & Bird Observations
 
@@ -231,21 +233,24 @@ bird_percent_df <- holc_birds |>
 ```
 
 ```{r}
+#| label: fig-percs
+#| fig-cap: "Percentage of Total Bird Observations by HOLC Grade. HOLC ranking: A (green), B (blue), C (yellow), D (red)."
 # Create barplot of bird observations percent by grade
 ggplot(bird_percent_df, aes(x = grade, y = bird_obs_perc, fill = grade)) +
   scale_fill_manual(values = colors, na.value = 'grey59') +
   geom_bar(stat = 'identity', show.legend = FALSE) +
-  labs(title = "Figure 2.1. Percentage of Total Bird Observations by Grade",
-       x = "Grade",
-       y = "Percentage (%)") +
+  labs(x = "Grade",
+       y = "Percentage (%) of Total Bird Observations") +
   theme_light()
 ```
 
 ## 2.2 Summary
 
-Figure 2 shows that Grade C locations contain the most bird observations by percentage. However, the results of Ellis-Soto et al. 2023 show that locations with a Grade A rating have the highest number of bird observations per kilometer squared when accounting for sampling density. In the methods section of Ellis-Soto et al. 2023, it is stated that the total area of each HOLC grade was calculated and then used to calculate how bird observations differed across grades. Without considering the amount of total area for each grade, grades that cover more area (Grade C) would appear to have the majority of bird observations. Factoring in sample density per area adjusts observation counts relative to area so that larger areas don't disproportionately affect the results. 
+@fig-percs shows that Grade C locations contain the most bird observations by percentage. However, the results of Ellis-Soto et al. 2023 show that locations with a Grade A rating have the highest number of bird observations per kilometer squared when accounting for sampling density. In the methods section of Ellis-Soto et al. 2023, it is stated that the total area of each HOLC grade was calculated and then used to calculate how bird observations differed across grades. Without considering the amount of total area for each grade, grades that cover more area (Grade C) would appear to have the majority of bird observations. Factoring in sample density per area adjusts observation counts relative to area so that larger areas don't disproportionately affect the results. 
 
 ```{r}
+#| label: fig-area
+#| fig-cap: "Total Area by HOLC Grade. HOLC ranking: A (green), B (blue), C (yellow), D (red)."
 area_holc_birds <- holc_birds|> 
   group_by(grade) |> 
   summarise(total_area_km2 = as.numeric(sum(unique(st_area(geometry)) / 1e6))) |> 
@@ -253,7 +258,7 @@ area_holc_birds <- holc_birds|>
 
 ggplot(data = area_holc_birds, aes(grade, total_area_km2, fill = grade)) +
   scale_fill_manual(values = colors, na.value = 'grey59') +
-  labs(x = "Grade", y = "Total Area (square kilometers)", title = "Figure 2.2. Total Area by Grade") +
+  labs(x = "Grade", y = "Total Area (square kilometers)") +
   geom_bar(stat = "identity", show.legend = FALSE) +
   theme_light()
 ```
