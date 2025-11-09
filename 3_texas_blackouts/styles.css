@@ -1,0 +1,49 @@
+
+/* Make headers use full-width background color matching the Pulse theme */
+h1, h2, h3, h4, h5, h6 {
+  background-color: var(--bs-primary);  /* Pulse purple */
+  color: white;
+  padding: 0.6em 1em;                  /* Top/bottom, left/right padding */
+  border-radius: 0.5em;
+  margin: 2em 0 1em 0;                 /* Space above and below */
+  width: 100%;                         /* Span full width */
+  box-sizing: border-box;              /* Keep padding within width */
+}
+
+/* Neutralize theme styles inside .no-theme */
+.no-theme {
+  all: revert; /* resets styles back to browser defaults */
+  font-family: system-ui, sans-serif; /* ensure readable font */
+  color: black;
+  overflow-x: auto; /* handle wide content */
+}
+
+.no-theme a {
+  color: #0056b3;
+}
+
+/* Style the title block with Pulse theme's colors */
+.quarto-title-block {
+  background-color: var(--bs-primary); /* Pulse purple */
+  color: white;
+  padding: 1.5em;
+  border-radius: 0.5em;
+  text-align: center;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+  margin-bottom: 2em;
+}
+
+/* Make sure title, author, and date all look cohesive */
+.quarto-title-block .title {
+  font-weight: 700;
+  color: white;
+  margin-bottom: 0.5em;
+}
+
+.quarto-title-block .author,
+.quarto-title-block .date {
+  color: white;
+  opacity: 0.9;
+  font-size: 1.1em;
+}
+
