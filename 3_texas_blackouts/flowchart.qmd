@@ -1,0 +1,46 @@
+---
+title: "flowchart"
+format: html
+---
+
+
+```{mermaid}
+flowchart LR
+  subgraph census-id[Census & Income]
+  d1(Join census & income data) --> d2(Crop data to Houston)
+  d2 --> d3(Find tracts that did & did not have blackouts)
+  d3 --> d4>Map census tracts]
+  d3 --> d5>Visualize income distribution between groups]
+  end
+  
+  style census-id fill:#e2e2e2
+  
+  subgraph homes-id[Homes]
+  c1(Filter to homes within blackout areas) --> c2>Map impacted homes]
+  end
+  
+  style homes-id fill:#e2e2e2
+
+  subgraph roads-id[Roads]
+  b1(Create 200m buffer) --> b2(Union roads buffer)
+  b2 --> b3(Subtract roads buffer from blackout mask)
+  end
+  
+  style roads-id fill:#e2e2e2
+  
+  subgraph lights-id[Lights]
+  a1(Merge light tiles) --> a2(Crop tiles to Houston)
+  a2 --> a3>Visualize lights before & after the storm]
+  a2 --> a4(Find raster difference)
+  a4 --> a5(Create blackout mask: Keep only values < -200)
+  end
+  
+  lights-id --> a6{{Blackout areas}}
+  a6 --> roads-id
+  roads-id --> a7{{Blackout areas, excluding highways}}
+  a7 --> homes-id
+  a7 --> d3
+  
+  style lights-id fill:#e2e2e2
+
+```
