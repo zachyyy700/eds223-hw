@@ -1,6 +1,6 @@
-# Homework 3: 2021 Texas Blackouts
+# Homework 3: 2021 Texas Blackouts {.no-theme}
 
-### Description
+### Description {.no-theme}
 
 This folder contains the contents for homework 3. This homework's main goal is to analyze the disproportionate effects of the 2021 severe winter storm in Houston, Texas.
 
@@ -17,7 +17,11 @@ This folder contains the contents for homework 3. This homework's main goal is t
 └── texas_power.qmd
 ```
 
-### Data
+### Flowchart {.no-theme}
+
+{{< include flowchart.qmd >}}
+
+### Data {.no-theme}
 
 -   Night lights: Data used is from February 7th & 16th, 2021, showing the before and after of the February 2021 Texas winter storm. The Visible Infrared Imaging Radiometer Suite (VIIRS) data is from NASA's Level-1 and Atmospheric Archive & Distribution System Distributed Active Archive Center (LAADS DAAC). The .tif files were downloaded and prepared by the instructors. [LAADS DAAC Website](https://ladsweb.modaps.eosdis.nasa.gov/)
 
@@ -27,7 +31,7 @@ This folder contains the contents for homework 3. This homework's main goal is t
 
 -   Socioeconomic: Obtained from the U.S. Census Bureau's American Community Survey for census tracts in 2019. Used for combining census attribute data to OSM geospatial data.
 
-### References
+### References {.no-theme}
 
 -   Román, M.O., Wang, Z., Sun, Q., Kalb, V.L., Miller, S.D., Molthan, A., Schultz, L., Bell, J., Stokes, E.C., Pandey, B., et al. (2018). NASA’s Black Marble nighttime lights product suite (VNP46). Remote Sensing of Environment, 210, 113-143. <https://doi.org/10.1016/j.rse.2018.03.017>
 
@@ -35,6 +39,8 @@ This folder contains the contents for homework 3. This homework's main goal is t
 
 -   U.S. Census Bureau. (2020). TIGER/Line Shapefiles and American Community Survey 2019 (5-Year Estimates), Texas — Census Tract Level (ACS_2019_5YR_TRACT_48_TEXAS) [Data set]. U.S. Department of Commerce. Available from <https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-data.html>
 
-### Author
+-   Lee CC, Maron M, Mostafavi A. Community-scale big data reveals disparate impacts of the Texas winter storm of 2021 and its managed power outage. Humanit Soc Sci Commun. 2022;9(1):335. <doi:10.1057/s41599-022-01353-8>. Epub 2022 Sep 24. PMID: 36187845; PMCID: PMC9510185.
+
+### Author {.no-theme}
 
 Zach Loo
