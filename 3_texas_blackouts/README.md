@@ -19,7 +19,7 @@ This folder contains the contents for homework 3. This homework's main goal is t
 
 ### Flowchart
 
-```mermaid
+``` mermaid
 flowchart LR
   subgraph census-id[Census & Income]
   d1(Join census & income data) --> d2(Crop data to Houston)
@@ -28,20 +28,20 @@ flowchart LR
   d3 --> d5>Visualize income distribution between groups]
   end
   
-  style census-id fill:#e2e2e2
+  style census-id fill:#F2F2F2
   
   subgraph homes-id[Homes]
   c1(Filter to homes within blackout areas) --> c2>Map impacted homes]
   end
   
-  style homes-id fill:#e2e2e2
+  style homes-id fill:#F2F2F2
 
   subgraph roads-id[Roads]
   b1(Create 200m buffer) --> b2(Union roads buffer)
   b2 --> b3(Subtract roads buffer from blackout mask)
   end
   
-  style roads-id fill:#e2e2e2
+  style roads-id fill:#F2F2F2
   
   subgraph lights-id[Lights]
   a1(Merge light tiles) --> a2(Crop tiles to Houston)
@@ -56,7 +56,7 @@ flowchart LR
   a7 --> homes-id
   a7 --> d3
   
-  style lights-id fill:#e2e2e2
+  style lights-id fill:#F2F2F2
 ```
 
 ### Data
