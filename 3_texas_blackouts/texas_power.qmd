@@ -5,7 +5,7 @@ date: "October 25, 2025"
 format:
   html: 
     theme: pulse
-    css: styles.css
+    css: styles.css 
 editor: source
 execute:
   warning: false
@@ -15,14 +15,11 @@ execute:
 
 # README {.no-theme}
 
-<div style="max-height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 1em; background: #e2e2e2;">
-{{< include README.md >}}
-</div>
+![](images/readme1.png) ![](images/readme2.png)
 
+------------------------------------------------------------------------
 
----
-
----
+------------------------------------------------------------------------
 
 ```{r}
 # Load packages
@@ -46,7 +43,7 @@ lights_16_2 <- read_stars(here::here('data', 'VNP46A1', 'VNP46A1.A2021047.h08v06
 
 ```
 
-## 1.1 Night Light Intensity Before & After Storm 
+## 1.1 Night Light Intensity Before & After Storm
 
 ```{r}
 # Merge Feb 7th rasters
@@ -129,7 +126,6 @@ blackout_areas <- lights_diff |>
 # Rename first column name
 colnames(blackout_areas)[1] <- "light_difference"
 ```
-
 
 ## 2. Exclude highways from blackout mask
 
@@ -269,7 +265,6 @@ houston_tracts_number <- census |>
 paste0("Number of Houston census tracts: ", houston_tracts_number) 
 ```
 
-
 ```{r}
 # Transform Houston bbox before joining
 #houston_bbox <- st_transform(houston_bbox, crs = "EPSG:3083")
@@ -329,7 +324,6 @@ census_blackout_tf <- census_income |>
   mutate(blackout = GEOID %in% blackout_ids)
 ```
 
-
 ```{r}
 #| label: fig-income
 #| fig-cap: "Distribution of Median Household Income for Census Tracts per Blackout Group."
@@ -346,13 +340,12 @@ ggplot(census_blackout_tf, aes(blackout, median_hh_income_est)) +
         axis.title.x = element_blank()) 
 ```
 
-
 ```{r}
 # Get value counts for blackout column
 table(census_blackout_tf$blackout)
 ```
 
-It is documented that impacted census tracts did have lower median household income on average, indicating that low-income communities in Texas were disproportionately affected by the 2021 winter storm [(Lee et al. 2022)](https://pubmed.ncbi.nlm.nih.gov/36187845/). The boxplots in @fig-income don't show the expected results. 
+It is documented that impacted census tracts did have lower median household income on average, indicating that low-income communities in Texas were disproportionately affected by the 2021 winter storm [(Lee et al. 2022)](https://pubmed.ncbi.nlm.nih.gov/36187845/). The boxplots in @fig-income don't show the expected results.
 
 ## References
 
@@ -360,6 +353,6 @@ It is documented that impacted census tracts did have lower median household inc
 
 -   OpenStreetMap Contributors (2025). OpenStreetMap database. Retrieved from <https://www.openstreetmap.org>. Distributed by Geofabrik GmbH, Karlsruhe, Germany. Available at <https://download.geofabrik.de/>
 
--   U.S. Census Bureau. (2020). TIGER/Line Shapefiles and American Community Survey 2019 (5-Year Estimates), Texas — Census Tract Level (ACS_2019_5YR_TRACT_48_TEXAS) [Data set]. U.S. Department of Commerce. Available from <https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-data.html>
+-   U.S. Census Bureau. (2020). TIGER/Line Shapefiles and American Community Survey 2019 (5-Year Estimates), Texas — Census Tract Level (ACS_2019_5YR_TRACT_48_TEXAS) \[Data set\]. U.S. Department of Commerce. Available from <https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-data.html>
 
-- Lee CC, Maron M, Mostafavi A. Community-scale big data reveals disparate impacts of the Texas winter storm of 2021 and its managed power outage. Humanit Soc Sci Commun. 2022;9(1):335. doi:10.1057/s41599-022-01353-8. Epub 2022 Sep 24. PMID: 36187845; PMCID: PMC9510185.
+-   Lee CC, Maron M, Mostafavi A. Community-scale big data reveals disparate impacts of the Texas winter storm of 2021 and its managed power outage. Humanit Soc Sci Commun. 2022;9(1):335. doi:10.1057/s41599-022-01353-8. Epub 2022 Sep 24. PMID: 36187845; PMCID: PMC9510185.
