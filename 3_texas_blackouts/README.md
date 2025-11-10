@@ -19,9 +19,7 @@ This folder contains the contents for homework 3. This homework's main goal is t
 
 ### Flowchart
 
-<pre>
-
-``` mermaid
+```mermaid
 flowchart LR
   subgraph census-id[Census & Income]
   d1(Join census & income data) --> d2(Crop data to Houston)
@@ -60,8 +58,6 @@ flowchart LR
   
   style lights-id fill:#e2e2e2
 ```
-
-</pre>
 
 ### Data
 
