@@ -1,6 +1,6 @@
-# Homework 3: 2021 Texas Blackouts 
+# Homework 3: 2021 Texas Blackouts
 
-### Description 
+### Description
 
 This folder contains the contents for homework 3. This homework's main goal is to analyze the disproportionate effects of the 2021 severe winter storm in Houston, Texas.
 
@@ -17,9 +17,11 @@ This folder contains the contents for homework 3. This homework's main goal is t
 └── texas_power.qmd
 ```
 
-### Flowchart 
+### Flowchart
 
-```{mermaid}
+<pre>
+
+``` mermaid
 flowchart LR
   subgraph census-id[Census & Income]
   d1(Join census & income data) --> d2(Crop data to Houston)
@@ -57,10 +59,11 @@ flowchart LR
   a7 --> d3
   
   style lights-id fill:#e2e2e2
-
 ```
 
-### Data 
+</pre>
+
+### Data
 
 -   Night lights: Data used is from February 7th & 16th, 2021, showing the before and after of the February 2021 Texas winter storm. The Visible Infrared Imaging Radiometer Suite (VIIRS) data is from NASA's Level-1 and Atmospheric Archive & Distribution System Distributed Active Archive Center (LAADS DAAC). The .tif files were downloaded and prepared by the instructors. [LAADS DAAC Website](https://ladsweb.modaps.eosdis.nasa.gov/)
 
@@ -70,7 +73,7 @@ flowchart LR
 
 -   Socioeconomic: Obtained from the U.S. Census Bureau's American Community Survey for census tracts in 2019. Used for combining census attribute data to OSM geospatial data.
 
-### References 
+### References
 
 -   Román, M.O., Wang, Z., Sun, Q., Kalb, V.L., Miller, S.D., Molthan, A., Schultz, L., Bell, J., Stokes, E.C., Pandey, B., et al. (2018). NASA’s Black Marble nighttime lights product suite (VNP46). Remote Sensing of Environment, 210, 113-143. <https://doi.org/10.1016/j.rse.2018.03.017>
 
@@ -80,6 +83,6 @@ flowchart LR
 
 -   Lee CC, Maron M, Mostafavi A. Community-scale big data reveals disparate impacts of the Texas winter storm of 2021 and its managed power outage. Humanit Soc Sci Commun. 2022;9(1):335. <doi:10.1057/s41599-022-01353-8>. Epub 2022 Sep 24. PMID: 36187845; PMCID: PMC9510185.
 
-### Author 
+### Author
 
 Zach Loo
