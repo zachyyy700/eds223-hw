@@ -189,19 +189,14 @@ homes_blackout <- homes |>
 ```{r fig.height=6, fig.width=7}
 #| label: fig-blackout-homes
 #| fig-cap: "Map of Homes That Lost Power."
-
-tm_shape(blackout_far_areas) +
-  tm_polygons(col = 'grey20', col_alpha = 0.5) +
-  tm_basemap('CartoDB.VoyagerNoLabels') +
-  tm_graticules(x = seq(-96.4, -94.8, 0.4),
-                #y = seq(29.0, 30.4, 0.2),
-                alpha = 0.2) +
   
 tm_shape(homes_blackout) +
   tm_polygons(col = 'blue') +
+  tm_basemap('CartoDB.VoyagerNoLabels') +
+  tm_graticules(x = seq(-96.4, -94.8, 0.4), alpha = 0.2) +
 
-tm_add_legend(labels = c("Blackout Areas, Excluding Highways", "Homes That Lost Power"),
-              fill = c('grey20', 'blue'),
+tm_add_legend(labels = c("Homes That Lost Power"),
+              fill = c('blue'),
               type = 'polygons',
               position = c('left', 'top')) +
 
@@ -228,7 +223,7 @@ homes_df$type[6] <- "NA"
 
 ```{r}
 #| label: tbl-homes
-#| tbl-cap: "Homes That Experienced Blackouts by Home Type"
+#| tbl-cap: "Estimate of Homes That Experienced Blackouts by Home Type"
 
 # Display kable table
 options(knitr.kable.NA = "")
@@ -322,6 +317,9 @@ tm_add_legend(labels = c("Tracts That Lost Power"),
 # Create boolean column whether tract had a blackout or not
 census_blackout_tf <- census_income |> 
   mutate(blackout = GEOID %in% blackout_ids)
+
+# Get value counts for blackout column
+table(census_blackout_tf$blackout)
 ```
 
 ```{r}
@@ -340,12 +338,9 @@ ggplot(census_blackout_tf, aes(blackout, median_hh_income_est)) +
         axis.title.x = element_blank()) 
 ```
 
-```{r}
-# Get value counts for blackout column
-table(census_blackout_tf$blackout)
-```
+## 5. Summary
 
-It is documented that impacted census tracts did have lower median household income on average, indicating that low-income communities in Texas were disproportionately affected by the 2021 winter storm [(Lee et al. 2022)](https://pubmed.ncbi.nlm.nih.gov/36187845/). The boxplots in @fig-income don't show the expected results.
+Winter storm Uri hit Texas in February 2021 and impacted over 100,000 homes within about 900 census tracts. It is documented that impacted census tracts did in fact have lower median household incomes on average, indicating that low-income communities in Texas were disproportionately affected by the storm [(Lee et al. 2022)](https://pubmed.ncbi.nlm.nih.gov/36187845/). However, the boxplots in @fig-income don't show the expected results. One possible cause for this was the limited amount of data of only 2 days that was used in creating the blackout mask. Perhaps if we had more night light data spanning a range of dates, we could have a more accurate picture of what areas experienced blackouts, thus leading to a more historically accurate conclusion. Additionally, Lee et al. 2022 also faced data limitations as detailed power outage data was not available. Instead, the authors used data from Mapbox Population Activity, the 311 Houston Service Helpline, and SafeGraph POI Visit Data, along with the ACS census tract data to assess community impacts. While night light data provides a broad view of power outages across large areas, the alternative datsets in Lee et al. 2022 proved more effective in revealing the fine details and impacts of the storm.
 
 ## References
 
