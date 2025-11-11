@@ -13,8 +13,9 @@ This folder contains the contents for homework 3. This homework's main goal is t
 │   ├── gis_osm_roads_free_1.gpkg
 │   └── VNP46A1/
 ├── README.md
+├── styles.css
 ├── texas_power.pdf
-└── texas_power.qmd
+├── texas_power.qmd
 ```
 
 ### Flowchart
