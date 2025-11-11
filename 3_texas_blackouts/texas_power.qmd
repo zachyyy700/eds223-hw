@@ -73,24 +73,29 @@ cropped_07 <- st_crop(lights_07, houston_bbox)
 cropped_16 <- st_crop(lights_16, houston_bbox)
 ```
 
-```{r fig.width=12, fig.height=5}
+```{r fig.width=12, fig.height=6}
 #| label: fig-beforeafter
 #| fig-cap: "Comparison of Houston Lights Before & After the February 2021 Severe Winter Storm."
 
 # Plot before & after maps
 map_07 <- tm_shape(cropped_07) +
   tm_raster(col.scale = tm_scale_continuous(values = '-brewer.greys'),
-            col.legend = tm_legend(show = FALSE)) +
-tm_layout(title = "Houston lights before storm (Feb. 7th)",
-          title.position = c(0.03, 1),
-          title.color = "white")
+            col.legend = tm_legend(show = TRUE, 
+                                   title = expression(Luminance ~ (Nw ~ cm^{-2} ~ sr^{-1})), 
+                                   orientation = 'landscape',
+                                   width = 42)) +
+tm_title(text = "Houston lights before storm (Feb. 7th)", 
+         position = c(0.03, 1), 
+         color = "white")
 
 map_16 <- tm_shape(cropped_16) +
   tm_raster(col.scale = tm_scale_continuous(values = '-brewer.greys'),
-            col.legend = tm_legend(show = FALSE)) +
-tm_layout(title = "Houston lights after storm (Feb. 16th)",
-          title.position = c(0.03, 1),
-          title.color = "white") +
+            col.legend = tm_legend(show = TRUE, 
+                                   title = expression(Luminance ~ (Nw ~ cm^{-2} ~ sr^{-1})),
+                                   orientation = 'landscape')) +
+tm_title(text = "Houston lights after storm (Feb. 16th)", 
+         position = c(0.03, 1), 
+         color = "white") +
 tm_compass(position = c('left', 'bottom'),
            size = 3,
            text.size = 0.9,
