@@ -1,0 +1,278 @@
+---
+title: "Homework 4: Oyster & Smelt for Aquaculture"
+author: "Zach Loo"
+date: "November 13, 2025"
+format: html
+editor: source
+execute:
+  warning: false
+  message: false
+  cache: true
+---
+
+```{r}
+# Load packages
+library(terra)
+library(tidyverse)
+library(tmap)
+library(kableExtra)
+library(maptiles)
+library(testthat)
+library(sf)
+```
+
+## 1. Prepare data
+
+```{r}
+# Load sst data
+sst_filelist <- list.files(path = here::here("data"), pattern = "average*")
+sst_all <- terra::rast(here::here('data', sst_filelist)) |> 
+  project("EPSG:4326")
+
+# Rename layers
+names(sst_all) <- c("2008", "2009", "2010", "2011", "2012")
+
+if (nlyr(sst_all) == 0) {
+  warning("0 layers found. Re-do data loading")
+}
+```
+
+```{r}
+# Load depth & wc_regions data
+depth_rast <- terra::rast(here::here('data', 'depth.tif')) |> 
+  project("EPSG:4326")
+
+wc_regions_sf <- st_read(here::here('data', 'wc_regions_clean.shp'), quiet = TRUE) |> 
+  st_transform("EPSG:4326")
+```
+
+```{r}
+# Create named data list
+data_list <- list(sst_data = sst_all, depth_data = depth_rast, marine_zones = wc_regions_sf)
+```
+
+```{r}
+# Use testthat to confirm CRSs match
+test_that("Coordinate reference systems match", {
+  expect_equal(crs(sst_all), crs(depth_rast))
+  expect_equal(crs(depth_rast), crs(wc_regions_sf))
+})
+```
+
+## 2. Process data
+
+```{r}
+# Find mean of sst_all layers
+sst_avg <- terra::mean(sst_all)
+
+# Convert to celsius
+sst_avg_celsius <- sst_avg - 273.15
+```
+
+```{r}
+# Handle resolution mismatch
+if (res(depth_rast)[1] != res(sst_avg_celsius)[1]){
+  warning("Resolution mismatch. Resampling to match SST.")
+  depth_rast <- resample(depth_rast, sst_avg_celsius, method = "near")
+}
+
+# Use testthat to confirm resolution match
+test_that("Resolutions match", {
+  expect_equal(res(sst_avg_celsius), res(depth_rast))
+})
+```
+
+```{r}
+# Crop depth raster to sst extent
+depth_cropped <- crop(depth_rast, sst_avg_celsius)
+
+# Use testthat to confirm extents match
+test_that("Extents match", {
+  expect_equal(ext(sst_avg_celsius), ext(depth_cropped))
+})
+```
+
+# 3. Find suitable locations
+
+Oysters need the following conditions: 
+
+- SST: 11-30°C
+
+- Depth: 0-70m below sea level
+
+```{r}
+# Create matrix for SST reclassifying
+rcl_sst <- matrix(c(-Inf, 11, 0,
+                11, 30, 1,
+                30, Inf, 0), ncol = 3, byrow = TRUE)
+
+# Create matrix for depth reclassifying
+rcl_depth <- matrix(c(-Inf, -70, 0,
+                      -70, 0, 1,
+                      0, Inf, 0), ncol = 3, byrow = TRUE)
+```
+
+```{r}
+# Use reclassification matrix to reclassify SST raster
+sst_suitable <- classify(sst_avg_celsius, rcl = rcl_sst)
+# Change reclassified values into factors
+#values(sst_suitable) <- as.factor(values(sst_suitable))
+
+# Use reclassification matrix to reclassify depth raster
+depth_suitable <- classify(depth_cropped, rcl = rcl_depth)
+# Change reclassified values into factors
+#values(depth_suitable) <- as.factor(values(depth_suitable))
+```
+
+```{r}
+# Stack SST & depth rasters
+#suitable_stacked <- c(sst_suitable, depth_suitable)
+
+# Define multiplying function
+multiply <- function(sst, depth) {
+  sst * depth
+}
+
+# Multiply suitable rasters to find raster of combined conditions
+suitable_sst_depth <- lapp(c(sst_suitable, depth_suitable), fun = multiply)
+#values(suitable_sst_depth) <- as.factor(values(suitable_sst_depth))
+
+# Assign values of 0 to NA
+suitable_sst_depth[suitable_sst_depth == 0] <- NA
+```
+
+```{r}
+tmap_mode("view")
+# Plot suitable areas
+tm_shape(wc_regions_sf) + tm_polygons(fill = 'rgn') +
+tm_shape(suitable_sst_depth) + tm_raster()
+```
+
+# 4. Determine most suitable EEZ
+
+```{r}
+# Extract raster cells by ocean region polygon
+extracted <- terra::extract(suitable_sst_depth, wc_regions_sf, touches = TRUE)
+
+# Calculate suitable raster cells in each polygon
+extracted_counts <- extracted |> 
+  group_by(ID) |> 
+  summarise(count = sum(lyr1, na.rm = TRUE))
+```
+
+```{r}
+tmap_mode("plot")
+cellSize(suitable_sst_depth)
+
+tm_shape(cellSize(suitable_sst_depth, unit="km")) + tm_raster()
+```
+
+**In EPSG:4326, cell size varies!!!**
+
+```{r}
+# Create function to find area per raster cell
+cell_area <- function(cell, area) {
+  cell * area
+}
+
+areakm_stacked <- c(suitable_sst_depth, cellSize(suitable_sst_depth, unit = "km"))
+
+# Multiply rasters
+area_raster <- lapp(areakm_stacked[[c(1, 2)]], fun = cell_area)
+```
+
+```{r}
+# Extract suitable areas area
+area_extracted <- terra::extract(area_raster, wc_regions_sf, touches = TRUE) |> 
+  group_by(ID) |> 
+  summarise(suitable_area = sum(lyr1, na.rm = TRUE)) |> 
+  mutate(rgn = wc_regions_sf$rgn)
+```
+
+```{r}
+# Join to vector regions
+region_suitable_area <- left_join(x = wc_regions_sf, y = area_extracted, by = "rgn") |> 
+  select(-ID)
+```
+
+```{r}
+tm_shape(region_suitable_area) +
+  tm_polygons(fill = "suitable_area", fill.scale = tm_scale_continuous())
+```
+
+
+```{r}
+ggplot(area_extracted, aes(rgn, suitable_area)) + 
+  geom_bar(stat = 'identity')
+```
+
+## 5. Create function
+
+```{r}
+find_suitable_areas <- function(species_name, min_temp, max_temp, min_depth, max_depth) {
+  
+  # Create matrix for SST reclassifying
+rcl_sst <- matrix(c(-Inf, min_temp, 0, 
+                    min_temp, max_temp, 1, 
+                    max_temp, Inf, 0), ncol = 3, byrow = TRUE)
+
+# Create matrix for depth reclassifying
+rcl_depth <- matrix(c(-Inf, min_depth, 0,
+                      min_depth, max_depth, 1,
+                      max_depth, Inf, 0), ncol = 3, byrow = TRUE)
+
+# Use reclassification matrix to reclassify SST raster
+sst_suitable <- classify(sst_avg_celsius, rcl = rcl_sst)
+
+# Use reclassification matrix to reclassify depth raster
+depth_suitable <- classify(depth_cropped, rcl = rcl_depth)
+
+# Define multiplying function
+multiply <- function(sst, depth) {
+  sst * depth
+}
+
+# Multiply suitable rasters to find raster of combined conditions
+suitable_sst_depth <- lapp(c(sst_suitable, depth_suitable), fun = multiply)
+#values(suitable_sst_depth) <- as.factor(values(suitable_sst_depth))
+
+# Assign values of 0 to NA
+suitable_sst_depth[suitable_sst_depth == 0] <- NA
+
+# Extract raster cells by ocean region polygon
+extracted <- terra::extract(suitable_sst_depth, wc_regions_sf, touches = TRUE)
+
+# Calculate suitable raster cells in each polygon
+extracted_counts <- extracted |> 
+  group_by(ID) |> 
+  summarise(count = sum(lyr1, na.rm = TRUE))
+
+# Create function to find area per raster cell
+cell_area <- function(cell, area) {
+  cell * area
+}
+
+areakm_stacked <- c(suitable_sst_depth, cellSize(suitable_sst_depth, unit = "km"))
+
+# Multiply rasters
+area_raster <- lapp(areakm_stacked[[c(1, 2)]], fun = cell_area)
+
+# Extract suitable areas area
+area_extracted <- terra::extract(area_raster, wc_regions_sf, touches = TRUE) |> 
+  group_by(ID) |> 
+  summarise(suitable_area = sum(lyr1, na.rm = TRUE)) |> 
+  mutate(rgn = wc_regions_sf$rgn)
+
+# Join to vector regions
+region_suitable_area <- left_join(x = wc_regions_sf, y = area_extracted, by = "rgn") |> 
+  select(-ID)
+
+tm_shape(region_suitable_area) +
+  tm_polygons(fill = "suitable_area", fill.scale = tm_scale_continuous())
+}
+```
+
+```{r}
+find_suitable_areas("Oyster", 0, 40, -100, 50)
+```
+
