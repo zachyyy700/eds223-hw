@@ -7,7 +7,6 @@ editor: source
 execute:
   warning: false
   message: false
-  cache: true
 ---
 
 ```{r}
@@ -113,6 +112,8 @@ rcl_depth <- matrix(c(-Inf, -70, 0,
 ```
 
 ```{r}
+#| label: fig-sst-depth-suitable
+
 # Use reclassification matrix to reclassify SST raster
 sst_suitable <- classify(sst_avg_celsius, rcl = rcl_sst)
 # Change reclassified values into factors
@@ -122,45 +123,57 @@ sst_suitable <- classify(sst_avg_celsius, rcl = rcl_sst)
 depth_suitable <- classify(depth_cropped, rcl = rcl_depth)
 # Change reclassified values into factors
 #values(depth_suitable) <- as.factor(values(depth_suitable))
+
+# View classified rasters
+map1 <- tm_shape(sst_suitable) +
+  tm_raster(col.scale = tm_scale_discrete())
+map2 <- tm_shape(depth_suitable) +
+  tm_raster(col.scale = tm_scale_discrete())
+
+tmap_arrange(map1, map2, nrow = 1)
 ```
 
 ```{r}
-# Stack SST & depth rasters
-#suitable_stacked <- c(sst_suitable, depth_suitable)
-
-# Define multiplying function
-multiply <- function(sst, depth) {
-  sst * depth
-}
-
-# Multiply suitable rasters to find raster of combined conditions
-suitable_sst_depth <- lapp(c(sst_suitable, depth_suitable), fun = multiply)
-#values(suitable_sst_depth) <- as.factor(values(suitable_sst_depth))
+# Multiply suitable SST & depth rasters
+suitable_sst_depth <- sst_suitable * depth_suitable
+# Change layer name
+names(suitable_sst_depth) <- "suitable" # Cells are not sst mean anymore
 
 # Assign values of 0 to NA
 suitable_sst_depth[suitable_sst_depth == 0] <- NA
 ```
 
 ```{r}
-tmap_mode("view")
+#| label: fig-combined-suitable
+
 # Plot suitable areas
-tm_shape(wc_regions_sf) + tm_polygons(fill = 'rgn') +
-tm_shape(suitable_sst_depth) + tm_raster()
+tm_shape(wc_regions_sf) + 
+  tm_basemap("CartoDB.VoyagerNoLabels") +
+  tm_polygons(fill = 'rgn') +
+tm_shape(suitable_sst_depth) + tm_raster(col.scale = tm_scale_discrete(values = "red"))
 ```
 
 # 4. Determine most suitable EEZ
 
 ```{r}
+#| label: tbl-suitable-counts
+
 # Extract raster cells by ocean region polygon
 extracted <- terra::extract(suitable_sst_depth, wc_regions_sf, touches = TRUE)
 
 # Calculate suitable raster cells in each polygon
 extracted_counts <- extracted |> 
   group_by(ID) |> 
-  summarise(count = sum(lyr1, na.rm = TRUE))
+  summarise(count = sum(suitable, na.rm = TRUE)) |> 
+  mutate(ID = wc_regions_sf$rgn)
+
+kable(extracted_counts,
+      col.names = c("Region", "Suitable Cell Count"),
+      align = 'c')
 ```
 
 ```{r}
+#| label: fig-area-variation
 tmap_mode("plot")
 cellSize(suitable_sst_depth)
 
@@ -170,46 +183,52 @@ tm_shape(cellSize(suitable_sst_depth, unit="km")) + tm_raster()
 **In EPSG:4326, cell size varies!!!**
 
 ```{r}
-# Create function to find area per raster cell
-cell_area <- function(cell, area) {
-  cell * area
-}
-
-areakm_stacked <- c(suitable_sst_depth, cellSize(suitable_sst_depth, unit = "km"))
-
 # Multiply rasters
-area_raster <- lapp(areakm_stacked[[c(1, 2)]], fun = cell_area)
+area_raster <- suitable_sst_depth * cellSize(suitable_sst_depth, unit = 'km')
 ```
 
 ```{r}
+#| label: tbl-suitable-area
 # Extract suitable areas area
 area_extracted <- terra::extract(area_raster, wc_regions_sf, touches = TRUE) |> 
   group_by(ID) |> 
-  summarise(suitable_area = sum(lyr1, na.rm = TRUE)) |> 
-  mutate(rgn = wc_regions_sf$rgn)
+  summarise(suitable_area = sum(suitable, na.rm = TRUE)) |> 
+  mutate(ID = wc_regions_sf$rgn) |> 
+  rename(rgn = ID)
+
+kable(area_extracted,
+      col.names = c("Region", "Suitable Area (km<sup>2</sup>)"),
+      digits = 2,
+      align = 'c')
 ```
 
 ```{r}
 # Join to vector regions
-region_suitable_area <- left_join(x = wc_regions_sf, y = area_extracted, by = "rgn") |> 
-  select(-ID)
+region_suitable_area <- left_join(x = wc_regions_sf, y = area_extracted, by = "rgn") 
 ```
 
-```{r}
+```{r fig.height=10}
+#| label: fig-suitable-regions
+
 tm_shape(region_suitable_area) +
-  tm_polygons(fill = "suitable_area", fill.scale = tm_scale_continuous())
-```
-
-
-```{r}
-ggplot(area_extracted, aes(rgn, suitable_area)) + 
-  geom_bar(stat = 'identity')
+  tm_basemap("CartoDB.VoyagerNoLabels") +
+  tm_polygons(fill = "suitable_area", 
+              fill.scale = tm_scale_continuous(values = "brewer.purples",
+                                               ticks = seq(0, 4500, 1500)),
+              fill.legend = tm_legend(title = expression(Suitable ~ Area ~ (km^{2})),
+                                      position = c("right", "top"),
+                                      reverse = TRUE)) +
+  tm_title(text = "Oyster Aquaculture: West Coast US Regions") +
+  tm_graticules(alpha = 0.2, lwd = 0.7) 
 ```
 
 ## 5. Create function
 
 ```{r}
 find_suitable_areas <- function(species_name, min_temp, max_temp, min_depth, max_depth) {
+  
+  species_title <- species_name |> 
+    str_to_title()
   
   # Create matrix for SST reclassifying
 rcl_sst <- matrix(c(-Inf, min_temp, 0, 
@@ -227,14 +246,10 @@ sst_suitable <- classify(sst_avg_celsius, rcl = rcl_sst)
 # Use reclassification matrix to reclassify depth raster
 depth_suitable <- classify(depth_cropped, rcl = rcl_depth)
 
-# Define multiplying function
-multiply <- function(sst, depth) {
-  sst * depth
-}
-
-# Multiply suitable rasters to find raster of combined conditions
-suitable_sst_depth <- lapp(c(sst_suitable, depth_suitable), fun = multiply)
-#values(suitable_sst_depth) <- as.factor(values(suitable_sst_depth))
+# Multiply suitable SST & depth rasters
+suitable_sst_depth <- sst_suitable * depth_suitable
+# Change layer name
+names(suitable_sst_depth) <- "suitable" # Cells are not sst mean anymore
 
 # Assign values of 0 to NA
 suitable_sst_depth[suitable_sst_depth == 0] <- NA
@@ -245,22 +260,15 @@ extracted <- terra::extract(suitable_sst_depth, wc_regions_sf, touches = TRUE)
 # Calculate suitable raster cells in each polygon
 extracted_counts <- extracted |> 
   group_by(ID) |> 
-  summarise(count = sum(lyr1, na.rm = TRUE))
-
-# Create function to find area per raster cell
-cell_area <- function(cell, area) {
-  cell * area
-}
-
-areakm_stacked <- c(suitable_sst_depth, cellSize(suitable_sst_depth, unit = "km"))
+  summarise(count = sum(suitable, na.rm = TRUE))
 
 # Multiply rasters
-area_raster <- lapp(areakm_stacked[[c(1, 2)]], fun = cell_area)
+area_raster <- suitable_sst_depth * cellSize(suitable_sst_depth, unit = 'km')
 
 # Extract suitable areas area
 area_extracted <- terra::extract(area_raster, wc_regions_sf, touches = TRUE) |> 
   group_by(ID) |> 
-  summarise(suitable_area = sum(lyr1, na.rm = TRUE)) |> 
+  summarise(suitable_area = sum(suitable, na.rm = TRUE)) |> 
   mutate(rgn = wc_regions_sf$rgn)
 
 # Join to vector regions
@@ -268,11 +276,19 @@ region_suitable_area <- left_join(x = wc_regions_sf, y = area_extracted, by = "r
   select(-ID)
 
 tm_shape(region_suitable_area) +
-  tm_polygons(fill = "suitable_area", fill.scale = tm_scale_continuous())
+  tm_basemap("CartoDB.VoyagerNoLabels") +
+  tm_polygons(fill = "suitable_area", 
+              fill.scale = tm_scale_continuous(values = "brewer.greens"),
+              fill.legend = tm_legend(title = expression(Suitable ~ Area ~ (km^{2})),
+                                      position = c("right", "top"),
+                                      reverse = TRUE)) +
+  tm_title(text = paste(species_title, "Aquaculture: West Coast US Regions")) +
+  tm_graticules(alpha = 0.2, lwd = 0.7)
 }
 ```
 
-```{r}
-find_suitable_areas("Oyster", 0, 40, -100, 50)
+```{r fig.height=10}
+#| label: fig-function
+find_suitable_areas("Northern Brown Shrimp", 17, 21, -200, 0)
 ```
 
