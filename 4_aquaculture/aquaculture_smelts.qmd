@@ -31,6 +31,7 @@ sst_all <- terra::rast(here::here('data', sst_filelist)) |>
 # Rename layers
 names(sst_all) <- c("2008", "2009", "2010", "2011", "2012")
 
+# Display warning if sst stack not created correctly.
 if (nlyr(sst_all) == 0) {
   warning("0 layers found. Re-do data loading")
 }
@@ -43,11 +44,6 @@ depth_rast <- terra::rast(here::here('data', 'depth.tif')) |>
 
 wc_regions_sf <- st_read(here::here('data', 'wc_regions_clean.shp'), quiet = TRUE) |> 
   st_transform("EPSG:4326")
-```
-
-```{r}
-# Create named data list
-data_list <- list(sst_data = sst_all, depth_data = depth_rast, marine_zones = wc_regions_sf)
 ```
 
 ```{r}
@@ -71,10 +67,12 @@ sst_avg_celsius <- sst_avg - 273.15
 ```{r}
 # Handle resolution mismatch
 if (res(depth_rast)[1] != res(sst_avg_celsius)[1]){
-  warning("Resolution mismatch. Resampling to match SST.")
+  print("Resolution mismatch. Resampling to match SST.")
   depth_rast <- resample(depth_rast, sst_avg_celsius, method = "near")
 }
+```
 
+```{r}
 # Use testthat to confirm resolution match
 test_that("Resolutions match", {
   expect_equal(res(sst_avg_celsius), res(depth_rast))
@@ -116,25 +114,13 @@ rcl_depth <- matrix(c(-Inf, -70, 0,
 
 # Use reclassification matrix to reclassify SST raster
 sst_suitable <- classify(sst_avg_celsius, rcl = rcl_sst)
-# Change reclassified values into factors
-#values(sst_suitable) <- as.factor(values(sst_suitable))
 
 # Use reclassification matrix to reclassify depth raster
 depth_suitable <- classify(depth_cropped, rcl = rcl_depth)
-# Change reclassified values into factors
-#values(depth_suitable) <- as.factor(values(depth_suitable))
-
-# View classified rasters
-map1 <- tm_shape(sst_suitable) +
-  tm_raster(col.scale = tm_scale_discrete())
-map2 <- tm_shape(depth_suitable) +
-  tm_raster(col.scale = tm_scale_discrete())
-
-tmap_arrange(map1, map2, nrow = 1)
 ```
 
 ```{r}
-# Multiply suitable SST & depth rasters
+# Multiply suitable SST & depth rasters to get combined suitable temp/depth raster
 suitable_sst_depth <- sst_suitable * depth_suitable
 # Change layer name
 names(suitable_sst_depth) <- "suitable" # Cells are not sst mean anymore
@@ -143,60 +129,40 @@ names(suitable_sst_depth) <- "suitable" # Cells are not sst mean anymore
 suitable_sst_depth[suitable_sst_depth == 0] <- NA
 ```
 
-```{r}
-#| label: fig-combined-suitable
-
-# Plot suitable areas
-tm_shape(wc_regions_sf) + 
-  tm_basemap("CartoDB.VoyagerNoLabels") +
-  tm_polygons(fill = 'rgn') +
-tm_shape(suitable_sst_depth) + tm_raster(col.scale = tm_scale_discrete(values = "red"))
-```
-
-# 4. Determine most suitable EEZ
+# 4. Determine the most suitable EEZ
 
 ```{r}
 #| label: tbl-suitable-counts
 
-# Extract raster cells by ocean region polygon
-extracted <- terra::extract(suitable_sst_depth, wc_regions_sf, touches = TRUE)
-
 # Calculate suitable raster cells in each polygon
-extracted_counts <- extracted |> 
+region_counts <- terra::extract(suitable_sst_depth, wc_regions_sf, touches = TRUE) |> 
   group_by(ID) |> 
   summarise(count = sum(suitable, na.rm = TRUE)) |> 
   mutate(ID = wc_regions_sf$rgn)
 
-kable(extracted_counts,
+kable(region_counts,
       col.names = c("Region", "Suitable Cell Count"),
       align = 'c')
 ```
 
-```{r}
-#| label: fig-area-variation
-tmap_mode("plot")
-cellSize(suitable_sst_depth)
-
-tm_shape(cellSize(suitable_sst_depth, unit="km")) + tm_raster()
-```
-
-**In EPSG:4326, cell size varies!!!**
+**In EPSG:4326, cell size varies!!! Therefore the different cell sizes must be accounted for when calculating suitable area totals.**
 
 ```{r}
-# Multiply rasters
+# Multiply suitable and cellsize rasters to get area per cell raster
 area_raster <- suitable_sst_depth * cellSize(suitable_sst_depth, unit = 'km')
 ```
 
 ```{r}
 #| label: tbl-suitable-area
-# Extract suitable areas area
-area_extracted <- terra::extract(area_raster, wc_regions_sf, touches = TRUE) |> 
+
+# Calculate suitable areas area per region
+region_areas <- terra::extract(area_raster, wc_regions_sf, touches = TRUE) |> 
   group_by(ID) |> 
   summarise(suitable_area = sum(suitable, na.rm = TRUE)) |> 
   mutate(ID = wc_regions_sf$rgn) |> 
   rename(rgn = ID)
 
-kable(area_extracted,
+kable(region_areas,
       col.names = c("Region", "Suitable Area (km<sup>2</sup>)"),
       digits = 2,
       align = 'c')
@@ -204,7 +170,7 @@ kable(area_extracted,
 
 ```{r}
 # Join to vector regions
-region_suitable_area <- left_join(x = wc_regions_sf, y = area_extracted, by = "rgn") 
+region_suitable_area <- left_join(x = wc_regions_sf, y = region_areas, by = "rgn") 
 ```
 
 ```{r fig.height=10}
@@ -227,6 +193,7 @@ tm_shape(region_suitable_area) +
 ```{r}
 find_suitable_areas <- function(species_name, min_temp, max_temp, min_depth, max_depth) {
   
+  # Capitalize species name input for map title
   species_title <- species_name |> 
     str_to_title()
   
@@ -254,26 +221,18 @@ names(suitable_sst_depth) <- "suitable" # Cells are not sst mean anymore
 # Assign values of 0 to NA
 suitable_sst_depth[suitable_sst_depth == 0] <- NA
 
-# Extract raster cells by ocean region polygon
-extracted <- terra::extract(suitable_sst_depth, wc_regions_sf, touches = TRUE)
-
-# Calculate suitable raster cells in each polygon
-extracted_counts <- extracted |> 
-  group_by(ID) |> 
-  summarise(count = sum(suitable, na.rm = TRUE))
-
 # Multiply rasters
 area_raster <- suitable_sst_depth * cellSize(suitable_sst_depth, unit = 'km')
 
-# Extract suitable areas area
-area_extracted <- terra::extract(area_raster, wc_regions_sf, touches = TRUE) |> 
+# Calculate suitable areas area per region
+region_areas <- terra::extract(area_raster, wc_regions_sf, touches = TRUE) |> 
   group_by(ID) |> 
   summarise(suitable_area = sum(suitable, na.rm = TRUE)) |> 
-  mutate(rgn = wc_regions_sf$rgn)
+  mutate(ID = wc_regions_sf$rgn) |> 
+  rename(rgn = ID)
 
 # Join to vector regions
-region_suitable_area <- left_join(x = wc_regions_sf, y = area_extracted, by = "rgn") |> 
-  select(-ID)
+region_suitable_area <- left_join(x = wc_regions_sf, y = region_areas, by = "rgn")
 
 tm_shape(region_suitable_area) +
   tm_basemap("CartoDB.VoyagerNoLabels") +
@@ -287,8 +246,14 @@ tm_shape(region_suitable_area) +
 }
 ```
 
+Rock scallop (*Crassadoma giganteum*)
+
+- Depth range: 0 - 45m
+
+- Temperature range: Temperate (13 - 22°C)
+
 ```{r fig.height=10}
 #| label: fig-function
-find_suitable_areas("Northern Brown Shrimp", 17, 21, -200, 0)
+find_suitable_areas("Giant Rock Scallop", 13, 22, -45, 0)
 ```
 
