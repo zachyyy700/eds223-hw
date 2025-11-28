@@ -1,5 +1,5 @@
 ---
-title: "Homework 4: Oyster & Smelt for Aquaculture"
+title: "Homework 4: Aquaculture Suitability Analysis"
 author: "Zach Loo"
 date: "November 13, 2025"
 format: html
@@ -8,6 +8,8 @@ execute:
   warning: false
   message: false
 ---
+
+![](images/readme1.png) ![](images/readme2.png)
 
 ```{r}
 # Load packages
@@ -184,6 +186,7 @@ tm_shape(region_suitable_area) +
               fill.legend = tm_legend(title = expression(Suitable ~ Area ~ (km^{2})),
                                       position = c("right", "top"),
                                       reverse = TRUE)) +
+  tm_text(text = "rgn") +
   tm_title(text = "Oyster Aquaculture: West Coast US Regions") +
   tm_graticules(alpha = 0.2, lwd = 0.7) 
 ```
@@ -241,6 +244,7 @@ tm_shape(region_suitable_area) +
               fill.legend = tm_legend(title = expression(Suitable ~ Area ~ (km^{2})),
                                       position = c("right", "top"),
                                       reverse = TRUE)) +
+  tm_text(text = "rgn") +
   tm_title(text = paste(species_title, "Aquaculture: West Coast US Regions")) +
   tm_graticules(alpha = 0.2, lwd = 0.7)
 }
