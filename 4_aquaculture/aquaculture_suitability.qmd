@@ -175,7 +175,7 @@ kable(region_areas,
 region_suitable_area <- left_join(x = wc_regions_sf, y = region_areas, by = "rgn") 
 ```
 
-```{r fig.height=10}
+```{r fig.height=7}
 #| label: fig-suitable-regions
 
 tm_shape(region_suitable_area) +
@@ -186,7 +186,7 @@ tm_shape(region_suitable_area) +
               fill.legend = tm_legend(title = expression(Suitable ~ Area ~ (km^{2})),
                                       position = c("right", "top"),
                                       reverse = TRUE)) +
-  tm_text(text = "rgn") +
+  tm_text(text = "rgn", size = 0.7) +
   tm_title(text = "Oyster Aquaculture: West Coast US Regions") +
   tm_graticules(alpha = 0.2, lwd = 0.7) 
 ```
@@ -244,7 +244,7 @@ tm_shape(region_suitable_area) +
               fill.legend = tm_legend(title = expression(Suitable ~ Area ~ (km^{2})),
                                       position = c("right", "top"),
                                       reverse = TRUE)) +
-  tm_text(text = "rgn") +
+  tm_text(text = "rgn", size = 0.7) +
   tm_title(text = paste(species_title, "Aquaculture: West Coast US Regions")) +
   tm_graticules(alpha = 0.2, lwd = 0.7)
 }
@@ -256,7 +256,7 @@ Rock scallop (*Crassadoma giganteum*)
 
 - Temperature range: Temperate (13 - 22°C)
 
-```{r fig.height=10}
+```{r fig.height=7}
 #| label: fig-function
 find_suitable_areas("Giant Rock Scallop", 13, 22, -45, 0)
 ```
