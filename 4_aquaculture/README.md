@@ -7,7 +7,7 @@ This folder contains the contents for homework 4. This homework's main goal is t
 ``` 
 .
 ├── 4_aquaculture.Rproj
-├── aquaculture_smelts.qmd
+├── aquaculture_suitability.qmd
 ├── data
 │   ├── average_annual_sst_2008.tif
 │   ├── average_annual_sst_2009.tif
@@ -22,15 +22,13 @@ This folder contains the contents for homework 4. This homework's main goal is t
 └── README.md
 ```
 
-### Flowchart
-
 ### Data
 
--   SSTs
+-   Sea Surface Temperatures (SST): The annual average SST data used spans from 2008 - 2012. The .tif files were prepared by the course instructors but were generated from [NOAA's 5km Daily Global Satellite SST Anomaly v3.1](https://coralreefwatch.noaa.gov/product/5km/index_5km_ssta.php).
 
--   Bathymetry
+-   Bathymetry: The bathymetry raster was also provided and can be accessed through the [General Bathymetric Chart of the Oceans (GEBCO)](https://www.gebco.net/data-products/gridded-bathymetry-data#area).
 
--   EEZ Regions
+-   Exclusive Economic Zones (EEZ): The maritime boundaries are designated by the EEZ off of the west coast US. The .shp files were sourced from [Marineregions.org](https://www.marineregions.org/eez.php).
 
 
 ### References
