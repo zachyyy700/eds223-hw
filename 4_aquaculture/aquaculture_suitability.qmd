@@ -129,6 +129,10 @@ names(suitable_sst_depth) <- "suitable" # Cells are not sst mean anymore
 
 # Assign values of 0 to NA
 suitable_sst_depth[suitable_sst_depth == 0] <- NA
+
+# Vectorize regions & mask to ocean regions
+regions_vect <- vect(wc_regions_sf)
+suitable_all_mask <- mask(suitable_sst_depth, regions_vect)
 ```
 
 # 4. Determine the most suitable EEZ
@@ -137,7 +141,7 @@ suitable_sst_depth[suitable_sst_depth == 0] <- NA
 #| label: tbl-suitable-counts
 
 # Calculate suitable raster cells in each polygon
-region_counts <- terra::extract(suitable_sst_depth, wc_regions_sf, touches = TRUE) |> 
+region_counts <- terra::extract(suitable_all_mask, wc_regions_sf, touches = TRUE) |> 
   group_by(ID) |> 
   summarise(count = sum(suitable, na.rm = TRUE)) |> 
   mutate(ID = wc_regions_sf$rgn)
@@ -151,7 +155,7 @@ kable(region_counts,
 
 ```{r}
 # Multiply suitable and cellsize rasters to get area per cell raster
-area_raster <- suitable_sst_depth * cellSize(suitable_sst_depth, unit = 'km')
+area_raster <- suitable_all_mask * cellSize(suitable_all_mask, unit = 'km')
 ```
 
 ```{r}
@@ -191,6 +195,10 @@ tm_shape(region_suitable_area) +
   tm_graticules(alpha = 0.2, lwd = 0.7) 
 ```
 
+Using suitable temperature and depth parameters of oysters, a map displaying the suitable area ($\text{km}^2$) for oyster aquaculture per West Coast region was created. According to the map, the region with the least oyster potential is Northern California and the most is Central California.
+
+Next, a generalized function can be created to do this for any species of choice, given suitable temperature and depth parameters.
+
 ## 5. Create function
 
 ```{r}
@@ -224,8 +232,12 @@ names(suitable_sst_depth) <- "suitable" # Cells are not sst mean anymore
 # Assign values of 0 to NA
 suitable_sst_depth[suitable_sst_depth == 0] <- NA
 
+# Vectorize regions & mask to ocean regions
+regions_vect <- vect(wc_regions_sf)
+suitable_all_mask <- mask(suitable_sst_depth, regions_vect)
+
 # Multiply rasters
-area_raster <- suitable_sst_depth * cellSize(suitable_sst_depth, unit = 'km')
+area_raster <- suitable_all_mask * cellSize(suitable_all_mask, unit = 'km')
 
 # Calculate suitable areas area per region
 region_areas <- terra::extract(area_raster, wc_regions_sf, touches = TRUE) |> 
@@ -261,3 +273,12 @@ Rock scallop (*Crassadoma giganteum*)
 find_suitable_areas("Giant Rock Scallop", 13, 22, -45, 0)
 ```
 
+Using the function, a map showing suitable area ($\text{km}^2$) for rock scallop aquaculture was created. Compared to oysters, rock scallops have a narrower temperature range and prefer shallower waters. Indicated by the deep green, Southern California has the most suitable area for scallop aquaculture followed by Central California.
+
+## References
+
+- NOAA Coral Reef Watch. 2019, updated daily. NOAA Coral Reef Watch Version 3.1 Daily 5km Satellite Regional Virtual Station Time Series Data for West Coast USA, 2008-2012. College Park, Maryland, USA: NOAA Coral Reef Watch. Data set accessed November 20, 2025 at https://coralreefwatch.noaa.gov/product/vs/data.php.
+
+- GEBCO Compilation Group (2025) GEBCO 2025 Grid (doi:10.5285/37c52e96-24ea-67ce-e063-7086abc05f29). Accessed November 20, 2025 from https://www.gebco.net/data-products/gridded-bathymetry-data#area.
+
+- Flanders Marine Institute (2024). Union of the ESRI Country shapefile and the Exclusive Economic Zones (version 4). Available online at https://www.marineregions.org/. https://doi.org/10.14284/698. Accessed on November 20, 2025.
