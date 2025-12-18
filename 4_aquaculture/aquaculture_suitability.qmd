@@ -9,8 +9,6 @@ execute:
   message: false
 ---
 
-![](images/readme1.png) ![](images/readme2.png)
-
 ```{r}
 # Load packages
 library(terra)
@@ -195,7 +193,9 @@ tm_shape(region_suitable_area) +
   tm_graticules(alpha = 0.2, lwd = 0.7) 
 ```
 
-Using suitable temperature and depth parameters of oysters, a map displaying the suitable area ($\text{km}^2$) for oyster aquaculture per West Coast region was created. According to the map, the region with the least oyster potential is Northern California and the most is Central California.
+**Map reflection:** 
+
+To find suitable temperatures for oysters, a reclassification matrix was used to assign temperature cells to 1 if they *are suitable*, and to 0 if *not suitable*. In the same way, suitable depth cells were identified. Multiplying the suitable rasters resulted in a new raster that indicated suitable cells for both temperature and depth parameters. The next step was assign cells = 0 to NA and mask these cells for area calculations of suitable cells within EEZ regions only. To account for the varying cell size in EPSG:4326, the function `terra::cellSize()` was used and multiplied to our suitable cells mask. Extracting these cells from our ocean regions and aggregating, we're left with a dataframe with regions and their respective suitable area for aquaculture calculation. Joining back with the original regions dataframe, the geometries can be plotted by each region's suitable area in $\text{km}^2$. According to the map, the region with the least oyster potential is Northern California and the most is Central California.
 
 Next, a generalized function can be created to do this for any species of choice, given suitable temperature and depth parameters.
 
@@ -249,7 +249,7 @@ region_areas <- terra::extract(area_raster, wc_regions_sf, touches = TRUE) |>
 # Join to vector regions
 region_suitable_area <- left_join(x = wc_regions_sf, y = region_areas, by = "rgn")
 
-tm_shape(region_suitable_area) +
+map <- tm_shape(region_suitable_area) +
   tm_basemap("CartoDB.VoyagerNoLabels") +
   tm_polygons(fill = "suitable_area", 
               fill.scale = tm_scale_continuous(values = "brewer.greens"),
@@ -259,6 +259,8 @@ tm_shape(region_suitable_area) +
   tm_text(text = "rgn", size = 0.7) +
   tm_title(text = paste(species_title, "Aquaculture: West Coast US Regions")) +
   tm_graticules(alpha = 0.2, lwd = 0.7)
+
+  return(map)
 }
 ```
 
@@ -273,7 +275,7 @@ Rock scallop (*Crassadoma giganteum*)
 find_suitable_areas("Giant Rock Scallop", 13, 22, -45, 0)
 ```
 
-Using the function, a map showing suitable area ($\text{km}^2$) for rock scallop aquaculture was created. Compared to oysters, rock scallops have a narrower temperature range and prefer shallower waters. Indicated by the deep green, Southern California has the most suitable area for scallop aquaculture followed by Central California.
+Using the generalized workflow, a map showing suitable area ($\text{km}^2$) for rock scallop aquaculture was created. Compared to oysters, rock scallops have a narrower temperature range and prefer shallower waters. Indicated by the green gradient, Southern California has the most suitable area for scallop aquaculture followed by Central California.
 
 ## References
 
